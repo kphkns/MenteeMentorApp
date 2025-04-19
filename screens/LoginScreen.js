@@ -1,15 +1,9 @@
-// screens/LoginScreen.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  Alert,
-  TouchableOpacity,
-  Image,
-  ScrollView
+  View, Text, TextInput, Alert, TouchableOpacity, Image,
+  ScrollView, StyleSheet, BackHandler
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 
 export default function LoginScreen({ navigation }) {
@@ -18,9 +12,18 @@ export default function LoginScreen({ navigation }) {
   const [userType, setUserType] = useState('Student');
   const [loginMessage, setLoginMessage] = useState('');
 
+  // 🔒 Disable back button on login screen
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      () => true
+    );
+    return () => backHandler.remove();
+  }, []);
+
   const handleLogin = async () => {
     try {
-        const response = await fetch('http://192.168.225.136:5000/login', {
+      const response = await fetch('http://192.168.225.136:5000/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -32,8 +35,9 @@ export default function LoginScreen({ navigation }) {
       if (response.ok) {
         setLoginMessage(data.message);
         Alert.alert("Login Success", data.message);
-        navigation.navigate(userType); // Student, Faculty, or Admin
+        await AsyncStorage.setItem('authToken', data.token);
 
+        navigation.replace(userType); // ✅ prevents back to login
       } else {
         setLoginMessage(data.message || 'Login failed.');
         Alert.alert("Login Failed", data.message || 'Login failed.');
@@ -48,11 +52,12 @@ export default function LoginScreen({ navigation }) {
   return (
     <ScrollView contentContainerStyle={styles.page}>
       <View style={styles.container}>
-
         {/* Text Content */}
         <View style={styles.content}>
           <Text style={styles.title}>Welcome Back 👋</Text>
-          <Text style={styles.subtitle}>Login to continue using the Mentor Appointment System</Text>
+          <Text style={styles.subtitle}>
+            Login to continue using the Mentor Appointment System
+          </Text>
 
           {/* Email Input */}
           <View style={styles.inputWrapper}>
@@ -82,13 +87,24 @@ export default function LoginScreen({ navigation }) {
           {/* User Type Picker */}
           <Text style={styles.label}>Select User Type</Text>
           <View style={styles.pickerContainer}>
-            {['Student', 'Faculty', 'Admin'].map(type => (
+            {['Student', 'Faculty', 'Admin'].map((type) => (
               <TouchableOpacity
                 key={type}
-                style={[styles.pickerItem, userType === type && styles.selected]}
+                style={[
+                  styles.pickerItem,
+                  userType === type && styles.selected,
+                ]}
                 onPress={() => setUserType(type)}
               >
-                <Text style={userType === type ? styles.selectedText : styles.unselectedText}>{type}</Text>
+                <Text
+                  style={
+                    userType === type
+                      ? styles.selectedText
+                      : styles.unselectedText
+                  }
+                >
+                  {type}
+                </Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -99,7 +115,9 @@ export default function LoginScreen({ navigation }) {
           </TouchableOpacity>
 
           {/* Login Message */}
-          {loginMessage !== '' && <Text style={styles.loginMessage}>{loginMessage}</Text>}
+          {loginMessage !== '' && (
+            <Text style={styles.loginMessage}>{loginMessage}</Text>
+          )}
 
           {/* Forgot password */}
           <TouchableOpacity onPress={() => {}}>
@@ -243,4 +261,3 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
 });
- 
