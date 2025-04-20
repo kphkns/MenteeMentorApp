@@ -1,4 +1,3 @@
-// server.js
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
@@ -13,13 +12,16 @@ app.use(cors({
 }));
 app.use(bodyParser.json());
 
+// ✅ Serve uploaded files
+app.use('/uploads', express.static('uploads'));
+
 // Configure session
 app.use(session({
-  secret: 'your-secret-key', // 🔒 Use env variable in production
+  secret: 'your-secret-key',
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: false, // true only if using HTTPS
+    secure: false,
     maxAge: 1000 * 60 * 60 * 2 // 2 hours
   }
 }));
@@ -34,6 +36,9 @@ app.use('/', dashboardRoutes);
 const logoutRoute = require('./routes/Logout');
 app.use('/', logoutRoute);
 
+const studentRoutes = require('../Backend/routes/StudentProfile');
+app.use('/', studentRoutes);
+ 
 
 // Start server
 app.listen(port, () => {

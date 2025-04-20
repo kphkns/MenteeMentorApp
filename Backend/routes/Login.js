@@ -30,12 +30,23 @@ router.post('/', (req, res) => {
         userType: userType,
       };
 
-      // Sign token
+      // ✅ Update Last_login if Student
+      if (userType === 'Student') {
+        const updateQuery = `UPDATE student SET Last_login = NOW() WHERE Student_id = ?`;
+        db.query(updateQuery, [user.Student_id], (updateErr) => {
+          if (updateErr) {
+            console.error('Error updating last login:', updateErr);
+            // Don't return error here — just log it
+          }
+        });
+      }
+
+      // 🔐 Sign and return token
       const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '2h' });
 
       return res.status(200).json({
         message: `${userType} login successful`,
-        token: token, // ⬅️ Send token
+        token: token,
         user: payload
       });
     } else {
