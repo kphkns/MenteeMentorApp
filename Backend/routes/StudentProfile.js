@@ -136,4 +136,34 @@ router.put('/student/update-mobile', verifyToken, (req, res) => {
   );
 });
 
+// ✅ Change Password
+router.post('/student/change-password', verifyToken, (req, res) => {
+  const studentId = req.user.id;
+  const { oldPassword, newPassword } = req.body;
+
+  if (!oldPassword || !newPassword) {
+    return res.status(400).json({ message: 'Please provide both old and new passwords' });
+  }
+
+  // 1. Check old password
+  db.query('SELECT password FROM student WHERE Student_id = ?', [studentId], (err, results) => {
+    if (err || results.length === 0) {
+      return res.status(500).json({ message: 'Student not found' });
+    }
+
+    if (results[0].password !== oldPassword) {
+      return res.status(401).json({ message: 'Old password is incorrect' });
+    }
+
+    // 2. Update new password
+    db.query('UPDATE student SET password = ? WHERE Student_id = ?', [newPassword, studentId], (err) => {
+      if (err) {
+        return res.status(500).json({ message: 'Failed to update password' });
+      }
+      res.status(200).json({ message: 'Password changed successfully' });
+    });
+  });
+});
+
+
 module.exports = router;

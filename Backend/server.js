@@ -38,7 +38,6 @@ app.use('/', logoutRoute);
 
 const studentRoutes = require('../Backend/routes/StudentProfile');
 app.use('/', studentRoutes);
- 
 
 // Start server
 app.listen(port, () => {
