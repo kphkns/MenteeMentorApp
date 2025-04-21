@@ -8,11 +8,26 @@ const JWT_SECRET = 'your_super_secret_key';
 router.post('/', (req, res) => {
   const { email, password, userType } = req.body;
 
-  let table;
-  if (userType === 'Student') table = 'student';
-  else if (userType === 'Faculty') table = 'faculty';
-  else if (userType === 'Admin') table = 'admin';
-  else return res.status(400).json({ message: 'Invalid user type' });
+  if (!email || !password || !userType) {
+    return res.status(400).json({ message: 'Missing credentials' });
+  }
+
+  // Normalize user type
+  const userTypeNormalized = userType.toLowerCase();
+  let table, idField;
+
+  if (userTypeNormalized === 'student') {
+    table = 'student';
+    idField = 'Student_id';
+  } else if (userTypeNormalized === 'faculty') {
+    table = 'faculty';
+    idField = 'Faculty_id';
+  } else if (userTypeNormalized === 'admin') {
+    table = 'admin';
+    idField = 'Admin_id';
+  } else {
+    return res.status(400).json({ message: 'Invalid user type' });
+  }
 
   const query = `SELECT * FROM ${table} WHERE Email = ? AND password = ?`;
 
@@ -22,36 +37,38 @@ router.post('/', (req, res) => {
       return res.status(500).json({ message: 'Server error' });
     }
 
-    if (results.length > 0) {
-      const user = results[0];
-      const payload = {
-        id: user.id || user.Student_id || user.Faculty_id || user.Admin_id,
-        email: user.Email,
-        userType: userType,
-      };
-
-      // ✅ Update Last_login if Student
-      if (userType === 'Student') {
-        const updateQuery = `UPDATE student SET Last_login = NOW() WHERE Student_id = ?`;
-        db.query(updateQuery, [user.Student_id], (updateErr) => {
-          if (updateErr) {
-            console.error('Error updating last login:', updateErr);
-            // Don't return error here — just log it
-          }
-        });
-      }
-
-      // 🔐 Sign and return token
-      const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '2h' });
-
-      return res.status(200).json({
-        message: `${userType} login successful`,
-        token: token,
-        user: payload
-      });
-    } else {
+    if (results.length === 0) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
+
+    const user = results[0];
+    const userId = user[idField];
+
+    const payload = {
+      id: userId,
+      email: user.Email,
+      userType: userTypeNormalized.charAt(0).toUpperCase() + userTypeNormalized.slice(1),
+    };
+
+    // ✅ Update Last_login for student or admin
+    if (userTypeNormalized === 'student' || userTypeNormalized === 'admin') {
+      const updateQuery = `UPDATE ${table} SET Last_login = NOW() WHERE ${idField} = ?`;
+      db.query(updateQuery, [userId], (updateErr) => {
+        if (updateErr) {
+          console.error(`Error updating last login for ${userType}:`, updateErr);
+          // Just log error, don't block login
+        }
+      });
+    }
+
+    // ✅ Create and return JWT
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '2h' });
+
+    return res.status(200).json({
+      message: `${payload.userType} login successful`,
+      token,
+      user: payload
+    });
   });
 });
 

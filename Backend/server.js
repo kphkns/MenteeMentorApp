@@ -39,6 +39,9 @@ app.use('/', logoutRoute);
 const studentRoutes = require('../Backend/routes/StudentProfile');
 app.use('/', studentRoutes);
 
+const adminRoutes = require('./routes/AdminProfile');
+app.use('/', adminRoutes);
+
 // Start server
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
