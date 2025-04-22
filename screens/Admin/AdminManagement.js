@@ -20,20 +20,22 @@ const admins = [
     icon: <MaterialCommunityIcons name="file-document-outline" size={24} color="#7b61ff" />
   },
   {
-    id: '3',
-    name: 'FACULTY',
-    icon: <MaterialCommunityIcons name="account-tie-outline" size={24} color="#ff6f3c" />
-  },
-  {
     id: '4',
     name: 'BATCHS',
     icon: <MaterialCommunityIcons name="calendar-range" size={24} color="#00bf72" />
   },
   {
+    id: '3',
+    name: 'FACULTY',
+    icon: <MaterialCommunityIcons name="account-tie-outline" size={24} color="#ff6f3c" />
+  },
+  
+  {
     id: '5',
     name: 'STUDENTS',
     icon: <FontAwesome5 name="user-graduate" size={22} color="#e33fb1" />
   }
+  
 ];
 
 export default function AdminManagement({ navigation }) {
