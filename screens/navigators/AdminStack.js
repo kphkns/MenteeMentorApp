@@ -8,11 +8,11 @@ import AdminHome from '../Admin/AdminHome';
 import AdminProfile from '../Admin/AdminProfile';
 import AdminChangePassword from '../Admin/AdminChangePassword'; // ✅ Import change password screen.
 import AdminManagement from '../Admin/AdminManagement';
-import DepartmentScreen from '../Admin/DepartmentScreen';
-import ProgrammeScreen from '../Admin/ProgrammeScreen';
-import FacultyScreen from '../Admin/FacultyScreen';
-import BatchsScreen from '../Admin/BatchsScreen';
-import StudentsScreen from '../Admin/StudentsScreen';
+import DepartmentScreen from '../Admin/AdminManagemtScreen/DepartmentScreen';
+import ProgrammeScreen from '../Admin/AdminManagemtScreen/ProgrammeScreen';
+import FacultyScreen from '../Admin/AdminManagemtScreen/FacultyScreen';
+import BatchsScreen from '../Admin/AdminManagemtScreen/BatchsScreen';
+import StudentsScreen from '../Admin/AdminManagemtScreen/StudentsScreen';
 
 
 const Tab = createBottomTabNavigator();
