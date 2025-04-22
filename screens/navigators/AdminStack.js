@@ -8,6 +8,12 @@ import AdminHome from '../Admin/AdminHome';
 import AdminProfile from '../Admin/AdminProfile';
 import AdminChangePassword from '../Admin/AdminChangePassword'; // ✅ Import change password screen.
 import AdminManagement from '../Admin/AdminManagement';
+import DepartmentScreen from '../Admin/DepartmentScreen';
+import ProgrammeScreen from '../Admin/ProgrammeScreen';
+import FacultyScreen from '../Admin/FacultyScreen';
+import BatchsScreen from '../Admin/BatchsScreen';
+import StudentsScreen from '../Admin/StudentsScreen';
+
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -19,7 +25,7 @@ function AdminTabs() {
         tabBarIcon: ({ color, size }) => {
           let iconName;
           if (route.name === 'Home') iconName = 'home';
-           else if (route.name === 'Management') iconName = 'person';
+           else if (route.name === 'Management') iconName = 'construct';
           else if (route.name === 'Profile') iconName = 'person';
           return <Ionicons name={iconName} size={size} color={color} />;
         },
@@ -40,6 +46,12 @@ export default function AdminStack() {
     <Stack.Navigator screenOptions={{ headerShown: true }}>
       <Stack.Screen name="AdminTabs" component={AdminTabs} options={{ headerShown: false }} />
       <Stack.Screen name="AdminChangePassword" component={AdminChangePassword} options={{ title: 'Change Password' }} />
+      <Stack.Screen name="DEPARTMENT" component={DepartmentScreen} />
+      <Stack.Screen name="PROGRAMME" component={ProgrammeScreen} />
+      <Stack.Screen name="FACULTY" component={FacultyScreen} />
+      <Stack.Screen name="BATCHS" component={BatchsScreen} />
+      <Stack.Screen name="STUDENTS" component={StudentsScreen} />
+
     </Stack.Navigator>
   );
 }

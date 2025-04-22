@@ -1,122 +1,124 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TextInput, FlatList, StyleSheet, TouchableOpacity, Alert
+  View, Text, TextInput, FlatList,
+  TouchableOpacity, StyleSheet, SafeAreaView
 } from 'react-native';
-import { Ionicons, FontAwesome } from '@expo/vector-icons';
+import {
+  Ionicons, MaterialCommunityIcons,
+  FontAwesome5, Feather
+} from '@expo/vector-icons';
 
-export default function AdminManagement() {
+const admins = [
+  {
+    id: '1',
+    name: 'DEPARTMENT',
+    icon: <Ionicons name="business-outline" size={24} color="#0057ff" />
+  },
+  {
+    id: '2',
+    name: 'PROGRAMME',
+    icon: <MaterialCommunityIcons name="file-document-outline" size={24} color="#7b61ff" />
+  },
+  {
+    id: '3',
+    name: 'FACULTY',
+    icon: <MaterialCommunityIcons name="account-tie-outline" size={24} color="#ff6f3c" />
+  },
+  {
+    id: '4',
+    name: 'BATCHS',
+    icon: <MaterialCommunityIcons name="calendar-range" size={24} color="#00bf72" />
+  },
+  {
+    id: '5',
+    name: 'STUDENTS',
+    icon: <FontAwesome5 name="user-graduate" size={22} color="#e33fb1" />
+  }
+];
+
+export default function AdminManagement({ navigation }) {
   const [search, setSearch] = useState('');
-  const [admins, setAdmins] = useState([
-    { id: '1', name: 'Ravi Kumar', email: 'ravi@college.edu' },
-    { id: '2', name: 'Anita Sharma', email: 'anita@college.edu' },
-    { id: '3', name: 'Sunil Mehta', email: 'sunil@college.edu' },
-  ]);
 
   const filteredAdmins = admins.filter(admin =>
     admin.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleEdit = (admin) => {
-    Alert.alert('Edit', `Edit admin: ${admin.name}`);
-  };
-
-  const handleDelete = (id) => {
-    Alert.alert('Confirm Delete', 'Are you sure?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete', style: 'destructive',
-        onPress: () => setAdmins(prev => prev.filter(admin => admin.id !== id))
-      }
-    ]);
+  const handleSelect = (admin) => {
+    navigation.navigate(admin.name); // 👈 Navigate by screen name
   };
 
   const renderAdmin = ({ item }) => (
-    <View style={styles.card}>
-      <View style={styles.info}>
-        <Text style={styles.name}>{item.name}</Text>
-        <Text style={styles.email}>{item.email}</Text>
+    <TouchableOpacity style={styles.itemContainer} onPress={() => handleSelect(item)}>
+      <View style={styles.iconWrapper}>
+        {item.icon}
       </View>
-      <View style={styles.actions}>
-        <TouchableOpacity onPress={() => handleEdit(item)} style={styles.iconBtn}>
-          <FontAwesome name="edit" size={20} color="#007bff" />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => handleDelete(item.id)} style={styles.iconBtn}>
-          <Ionicons name="trash-bin-outline" size={22} color="#d9534f" />
-        </TouchableOpacity>
-      </View>
-    </View>
+      <Text style={styles.itemText}>{item.name}</Text>
+      <Ionicons name="chevron-forward" size={20} color="#888" />
+    </TouchableOpacity>
   );
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Admin Management</Text>
-      <TextInput
-        style={styles.searchInput}
-        placeholder="Search admin..."
-        value={search}
-        onChangeText={setSearch}
-      />
-      <FlatList
-        data={filteredAdmins}
-        keyExtractor={(item) => item.id}
-        renderItem={renderAdmin}
-        contentContainerStyle={{ paddingBottom: 20 }}
-      />
-    </View>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        <View style={styles.searchBox}>
+          <Feather name="search" size={18} color="#aaa" style={{ marginRight: 8 }} />
+          <TextInput
+            placeholder="Search"
+            style={styles.searchInput}
+            value={search}
+            onChangeText={setSearch}
+          />
+        </View>
+
+        <FlatList
+          data={filteredAdmins}
+          keyExtractor={(item) => item.id}
+          renderItem={renderAdmin}
+          contentContainerStyle={{ paddingBottom: 20 }}
+        />
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#e6f3ff',
-    paddingHorizontal: 20,
-    paddingTop: 40,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    marginBottom: 15,
-    color: '#007bff',
-    textAlign: 'center',
+  safeArea: { flex: 1, backgroundColor: '#e6f3ff' },
+  container: { padding: 20 },
+  searchBox: {
+    flexDirection: 'row',
+    backgroundColor: '#f2f2f2',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    marginBottom: 20,
+    alignItems: 'center',
   },
   searchInput: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    borderColor: '#ccc',
-    borderWidth: 1,
-    marginBottom: 20,
-  },
-  card: {
-    backgroundColor: '#fff',
-    padding: 15,
-    borderRadius: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-    elevation: 2,
-  },
-  info: {
     flex: 1,
-  },
-  name: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
   },
-  email: {
-    fontSize: 14,
-    color: '#777',
-    marginTop: 3,
-  },
-  actions: {
+  itemContainer: {
+    backgroundColor: '#fff',
     flexDirection: 'row',
-    marginLeft: 10,
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    marginBottom: 12,
+    elevation: 1,
   },
-  iconBtn: {
-    marginLeft: 15,
+  iconWrapper: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    backgroundColor: '#f0f0f0',
+  },
+  itemText: {
+    flex: 1,
+    fontSize: 16,
+    color: '#111',
   },
 });
