@@ -1,20 +1,22 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  FlatList, Alert, StyleSheet, ActivityIndicator, ScrollView
+  FlatList, Alert, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView
 } from 'react-native';
 import axios from 'axios';
 import { Ionicons, FontAwesome } from '@expo/vector-icons';
 
 const SERVER_URL = 'http://192.168.225.136:5000';
 
-export default function BatchsScreen() {
+export default function AddBatchesScreen() {
   const [batches, setBatches] = useState([]);
   const [batchName, setBatchName] = useState('');
   const [search, setSearch] = useState('');
   const [editingBatch, setEditingBatch] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+
+  const flatListRef = useRef();
 
   useEffect(() => {
     fetchBatches();
@@ -24,8 +26,7 @@ export default function BatchsScreen() {
     setLoading(true);
     try {
       const res = await axios.get(`${SERVER_URL}/admin/batches`);
-      const sorted = res.data.sort((a, b) => a.batch_name.localeCompare(b.batch_name));
-      setBatches(sorted);
+      setBatches(res.data);
     } catch {
       Alert.alert('Error', 'Failed to fetch batches');
     } finally {
@@ -40,34 +41,37 @@ export default function BatchsScreen() {
 
     try {
       setSubmitting(true);
+      const payload = { batch_name: batchName.trim() };
+
       if (editingBatch) {
-        await axios.put(`${SERVER_URL}/admin/batches/${editingBatch.Batch_id}`, {
-          batch_name: batchName.trim()
-        });
-        Alert.alert('Updated', 'Batch successfully updated');
+        await axios.put(`${SERVER_URL}/admin/batches/${editingBatch.Batch_id}`, payload);
+        Alert.alert('Updated', 'Batch updated successfully');
       } else {
-        await axios.post(`${SERVER_URL}/admin/batches`, {
-          batch_name: batchName.trim()
-        });
-        Alert.alert('Added', 'Batch successfully added');
+        await axios.post(`${SERVER_URL}/admin/batches`, payload);
+        Alert.alert('Added', 'Batch added successfully');
+        flatListRef.current?.scrollToOffset({ animated: true, offset: 0 });
       }
 
       setBatchName('');
       setEditingBatch(null);
+      setSearch('');
       fetchBatches();
-    } catch {
-      Alert.alert('Error', 'Could not save batch');
+    } catch (err) {
+      if (err.response?.status === 409) {
+        Alert.alert('Duplicate', 'This batch already exists.');
+      } else {
+        Alert.alert('Error', 'Operation failed. Please try again.');
+      }
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDelete = (id) => {
-    Alert.alert('Confirm', 'Delete this batch?', [
+    Alert.alert('Delete', 'Are you sure?', [
       { text: 'Cancel', style: 'cancel' },
       {
-        text: 'Delete',
-        style: 'destructive',
+        text: 'Delete', style: 'destructive',
         onPress: async () => {
           try {
             await axios.delete(`${SERVER_URL}/admin/batches/${id}`);
@@ -85,115 +89,172 @@ export default function BatchsScreen() {
   );
 
   const renderItem = ({ item }) => (
-    <View style={styles.item}>
-      <Text style={styles.itemText}>{item.batch_name}</Text>
-      <View style={styles.actions}>
+    <View style={styles.card}>
+      <Text style={styles.cardTitle}>{item.batch_name}</Text>
+      <View style={styles.cardActions}>
         <TouchableOpacity onPress={() => {
           setBatchName(item.batch_name);
           setEditingBatch(item);
         }}>
-          <FontAwesome name="edit" size={20} color="#007bff" />
+          <FontAwesome name="edit" size={20} color="#4e73df" />
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => handleDelete(item.Batch_id)} style={{ marginLeft: 15 }}>
-          <Ionicons name="trash-outline" size={22} color="#d9534f" />
+        <TouchableOpacity onPress={() => handleDelete(item.Batch_id)} style={{ marginLeft: 20 }}>
+          <Ionicons name="trash-outline" size={22} color="#e74a3b" />
         </TouchableOpacity>
       </View>
     </View>
   );
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 30 }}>
-      <Text style={styles.title}>Batch Management</Text>
+    <KeyboardAvoidingView style={styles.wrapper} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+        <View style={styles.container}>
+          <Text style={styles.header}>Manage Batches</Text>
 
-      <TextInput
-        placeholder="Enter Batch Year (e.g., 2023)"
-        value={batchName}
-        onChangeText={setBatchName}
-        style={styles.input}
-        keyboardType="numeric"
-      />
+          <TextInput
+            placeholder="Enter Batch Year (e.g., 2024)"
+            placeholderTextColor="#999"
+            value={batchName}
+            onChangeText={setBatchName}
+            keyboardType="numeric"
+            style={styles.input}
+          />
 
-      <View style={styles.buttonRow}>
-        <TouchableOpacity
-          style={[styles.button, submitting && { opacity: 0.7 }]}
-          onPress={handleAddOrUpdate}
-          disabled={submitting}
-        >
-          <Text style={styles.buttonText}>
-            {editingBatch ? 'Update' : 'Add'} Batch
-          </Text>
-        </TouchableOpacity>
+          <View style={styles.buttonRow}>
+            <TouchableOpacity
+              style={[styles.primaryButton, submitting && { opacity: 0.6 }]}
+              onPress={handleAddOrUpdate}
+              disabled={submitting}
+            >
+              <Text style={styles.buttonText}>{editingBatch ? 'Update' : 'Add'} Batch</Text>
+            </TouchableOpacity>
+            {editingBatch && (
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => {
+                  setEditingBatch(null);
+                  setBatchName('');
+                }}
+              >
+                <Text style={styles.cancelText}>Cancel</Text>
+              </TouchableOpacity>
+            )}
+          </View>
 
-        {editingBatch && (
-          <TouchableOpacity style={styles.cancelBtn} onPress={() => {
-            setEditingBatch(null);
-            setBatchName('');
-          }}>
-            <Text style={{ color: '#999' }}>Cancel</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+          <TextInput
+            placeholder="Search Batches..."
+            placeholderTextColor="#aaa"
+            value={search}
+            onChangeText={setSearch}
+            style={styles.searchInput}
+          />
 
-      <TextInput
-        placeholder="Search batch..."
-        value={search}
-        onChangeText={setSearch}
-        style={styles.searchInput}
-      />
-
-      {loading ? (
-        <ActivityIndicator size="large" color="#007bff" />
-      ) : filteredBatches.length === 0 ? (
-        <Text style={{ textAlign: 'center', color: '#888', marginTop: 20 }}>No batches found.</Text>
-      ) : (
-        <FlatList
-          data={filteredBatches}
-          keyExtractor={(item) => item.Batch_id.toString()}
-          renderItem={renderItem}
-          scrollEnabled={false}
-        />
-      )}
-    </ScrollView>
+          {loading ? (
+            <ActivityIndicator size="large" color="#4e73df" style={{ marginTop: 20 }} />
+          ) : filteredBatches.length === 0 ? (
+            <Text style={styles.emptyMessage}>No batches found.</Text>
+          ) : (
+            <FlatList
+              ref={flatListRef}
+              data={filteredBatches}
+              keyExtractor={(item) => item.Batch_id.toString()}
+              renderItem={renderItem}
+              scrollEnabled={false}
+            />
+          )}
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#e6f3ff', padding: 20 },
-  title: {
-    fontSize: 22, fontWeight: '700',
-    color: '#007bff', marginBottom: 15
+  wrapper: {
+    flex: 1,
+    backgroundColor: '#e6f3ff',
+  },
+  container: {
+    padding: 20,
+  },
+  header: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#4e73df',
+    marginBottom: 20,
   },
   input: {
-    backgroundColor: '#fff', padding: 12,
-    borderRadius: 8, borderColor: '#ccc', borderWidth: 1,
-    marginBottom: 10, fontSize: 16
-  },
-  buttonRow: {
-    flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'space-between', marginBottom: 15
-  },
-  button: {
-    flex: 1, backgroundColor: '#007bff',
-    padding: 12, borderRadius: 8, alignItems: 'center',
-    marginRight: 10
-  },
-  buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
-  cancelBtn: {
-    paddingVertical: 10, paddingHorizontal: 12,
-    backgroundColor: '#f0f0f0', borderRadius: 8
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    fontSize: 16,
+    marginBottom: 10,
+    borderColor: '#d1d3e2',
+    borderWidth: 1,
   },
   searchInput: {
-    backgroundColor: '#fff', padding: 12,
-    borderRadius: 8, borderColor: '#ccc',
-    borderWidth: 1, marginBottom: 15
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    fontSize: 16,
+    borderColor: '#d1d3e2',
+    borderWidth: 1,
+    marginBottom: 20,
   },
-  item: {
-    backgroundColor: '#fff', padding: 15,
-    borderRadius: 10, flexDirection: 'row',
-    justifyContent: 'space-between', alignItems: 'center',
-    marginBottom: 10, shadowColor: '#000', shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 2 }, elevation: 2
+  buttonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
   },
-  itemText: { fontSize: 16, fontWeight: '500', color: '#333' },
-  actions: { flexDirection: 'row' }
+  primaryButton: {
+    flex: 1,
+    backgroundColor: '#4e73df',
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  cancelButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    backgroundColor: '#e2e6ea',
+    borderRadius: 10,
+  },
+  buttonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  cancelText: {
+    color: '#444',
+    fontWeight: '600',
+  },
+  card: {
+    backgroundColor: '#fff',
+    padding: 15,
+    borderRadius: 12,
+    marginBottom: 12,
+    borderColor: '#d1d3e2',
+    borderWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    elevation: 2,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#343a40',
+  },
+  cardActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  emptyMessage: {
+    textAlign: 'center',
+    color: '#6c757d',
+    fontSize: 16,
+    marginTop: 20,
+  },
 });

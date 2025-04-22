@@ -18,7 +18,7 @@ export default function ProgrammeScreen() {
   const [searchDept, setSearchDept] = useState('');
   const [editingCourse, setEditingCourse] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [limit] = useState(50); // For future pagination
+  const [limit] = useState(50);
   const [displayedCount, setDisplayedCount] = useState(50);
 
   useEffect(() => {
@@ -107,14 +107,16 @@ export default function ProgrammeScreen() {
           (!searchDept || p.Dept_ID === searchDept)
         )
         .sort((a, b) => a.Course_name.localeCompare(b.Course_name))
-        .slice(0, displayedCount); // For pagination
+        .slice(0, displayedCount);
       return { title: dept.Dept_name, data };
     }).filter(group => group.data.length > 0);
 
   const renderItem = ({ item }) => (
-    <View style={styles.item}>
-      <Text style={styles.itemText}>{item.Course_name}</Text>
-      <View style={styles.actions}>
+    <View style={styles.card}>
+      <View>
+        <Text style={styles.cardTitle}>{item.Course_name}</Text>
+      </View>
+      <View style={styles.cardActions}>
         <TouchableOpacity onPress={() => {
           setCourseName(item.Course_name);
           setSelectedDept(String(item.Dept_ID));
@@ -122,7 +124,7 @@ export default function ProgrammeScreen() {
         }}>
           <FontAwesome name="edit" size={20} color="#007bff" />
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => handleDelete(item.Course_ID)} style={{ marginLeft: 15 }}>
+        <TouchableOpacity onPress={() => handleDelete(item.Course_ID)} style={{ marginLeft: 16 }}>
           <Ionicons name="trash-outline" size={22} color="#d9534f" />
         </TouchableOpacity>
       </View>
@@ -137,59 +139,60 @@ export default function ProgrammeScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Programme Management</Text>
+      <Text style={styles.header}>Programme Management</Text>
 
-      <TextInput
-        placeholder="Programme Name"
-        value={courseName}
-        onChangeText={setCourseName}
-        style={styles.input}
-      />
-
-      <View style={styles.pickerWrapper}>
-        <Picker
-          selectedValue={selectedDept}
-          onValueChange={(itemValue) => setSelectedDept(itemValue)}
-        >
-          <Picker.Item label="Select Department" value="" />
-          {[...departments].sort((a, b) => a.Dept_name.localeCompare(b.Dept_name)).map((dept) => (
-            <Picker.Item key={dept.Dept_id} label={dept.Dept_name} value={dept.Dept_id} />
-          ))}
-        </Picker>
-      </View>
-
-      <View style={styles.buttonRow}>
-        <TouchableOpacity style={styles.button} onPress={handleAddOrUpdate}>
-          <Text style={styles.buttonText}>{editingCourse ? 'Update' : 'Add'} Programme</Text>
-        </TouchableOpacity>
-        {editingCourse && (
-          <TouchableOpacity style={[styles.button, { backgroundColor: '#6c757d' }]} onPress={resetForm}>
-            <Text style={styles.buttonText}>Cancel</Text>
+      <View style={styles.inputGroup}>
+        <TextInput
+          placeholder="Enter Programme Name"
+          value={courseName}
+          onChangeText={setCourseName}
+          style={styles.input}
+        />
+        <View style={styles.pickerContainer}>
+          <Picker
+            selectedValue={selectedDept}
+            onValueChange={setSelectedDept}
+          >
+            <Picker.Item label="Select Department" value="" />
+            {departments.map(dept => (
+              <Picker.Item key={dept.Dept_id} label={dept.Dept_name} value={dept.Dept_id} />
+            ))}
+          </Picker>
+        </View>
+        <View style={styles.buttonRow}>
+          <TouchableOpacity style={styles.addButton} onPress={handleAddOrUpdate}>
+            <Text style={styles.buttonText}>{editingCourse ? 'Update' : 'Add'} Programme</Text>
           </TouchableOpacity>
-        )}
+          {editingCourse && (
+            <TouchableOpacity style={styles.cancelButton} onPress={resetForm}>
+              <Text style={styles.buttonText}>Cancel</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
-      <TextInput
-        placeholder="Search programmes..."
-        value={search}
-        onChangeText={setSearch}
-        style={styles.searchInput}
-      />
-
-      <View style={styles.pickerWrapper}>
-        <Picker
-          selectedValue={searchDept}
-          onValueChange={(value) => setSearchDept(value)}
-        >
-          <Picker.Item label="Filter by Department" value="" />
-          {[...departments].sort((a, b) => a.Dept_name.localeCompare(b.Dept_name)).map((dept) => (
-            <Picker.Item key={dept.Dept_id} label={dept.Dept_name} value={dept.Dept_id} />
-          ))}
-        </Picker>
+      <View style={styles.searchBox}>
+        <TextInput
+          placeholder="Search by name..."
+          value={search}
+          onChangeText={setSearch}
+          style={styles.searchInput}
+        />
+        <View style={styles.pickerContainer}>
+          <Picker
+            selectedValue={searchDept}
+            onValueChange={(val) => setSearchDept(val)}
+          >
+            <Picker.Item label="Filter by Department" value="" />
+            {departments.map(dept => (
+              <Picker.Item key={dept.Dept_id} label={dept.Dept_name} value={dept.Dept_id} />
+            ))}
+          </Picker>
+        </View>
       </View>
 
       {loading ? (
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" style={{ marginTop: 20 }} />
       ) : groupedProgrammes.length === 0 ? (
         <Text style={styles.emptyText}>😕 No programmes found.</Text>
       ) : (
@@ -198,7 +201,7 @@ export default function ProgrammeScreen() {
           keyExtractor={(item) => item.Course_ID.toString()}
           renderItem={renderItem}
           renderSectionHeader={renderSectionHeader}
-          contentContainerStyle={{ paddingBottom: 60 }}
+          contentContainerStyle={{ paddingBottom: 40 }}
         />
       )}
     </View>
@@ -206,58 +209,45 @@ export default function ProgrammeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: '#e6f3ff' },
-  title: { fontSize: 22, fontWeight: '700', color: '#007bff', marginBottom: 15 },
+  container: { flex: 1, backgroundColor: '#e6f3ff', padding: 15 },
+  header: { fontSize: 22, fontWeight: '700', color: '#0d6efd', marginBottom: 15 },
+  inputGroup: { backgroundColor: '#fff', padding: 15, borderRadius: 12, marginBottom: 20, elevation: 2 },
   input: {
-    backgroundColor: '#fff', padding: 10, borderRadius: 8,
-    borderColor: '#ccc', borderWidth: 1, marginBottom: 10
+    borderColor: '#ccc', borderWidth: 1, borderRadius: 8,
+    padding: 10, marginBottom: 10, backgroundColor: '#f9f9f9'
   },
-  pickerWrapper: {
-    backgroundColor: '#fff', borderColor: '#ccc',
-    borderWidth: 1, borderRadius: 8, marginBottom: 10
+  pickerContainer: {
+    borderColor: '#ccc', borderWidth: 1, borderRadius: 8,
+    backgroundColor: '#f9f9f9', marginBottom: 10
   },
-  buttonRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 15,
+  buttonRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  addButton: {
+    flex: 1, backgroundColor: '#0d6efd', padding: 12,
+    borderRadius: 8, alignItems: 'center', marginRight: 5
   },
-  button: {
-    flex: 1,
-    backgroundColor: '#007bff',
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginHorizontal: 5,
+  cancelButton: {
+    flex: 1, backgroundColor: '#6c757d', padding: 12,
+    borderRadius: 8, alignItems: 'center', marginLeft: 5
   },
   buttonText: { color: '#fff', fontWeight: '600' },
+  searchBox: { marginBottom: 15 },
   searchInput: {
-    backgroundColor: '#fff', padding: 10, borderRadius: 8,
-    borderColor: '#ccc', borderWidth: 1, marginBottom: 10
+    backgroundColor: '#fff', borderColor: '#ccc',
+    borderWidth: 1, borderRadius: 8, padding: 10, marginBottom: 10
   },
   sectionHeader: {
-    backgroundColor: '#d0e8ff',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-    marginTop: 10,
+    backgroundColor: '#d6eaff', padding: 10, borderRadius: 8,
+    marginTop: 10
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#333',
-  },
-  item: {
-    backgroundColor: '#fff', padding: 15, borderRadius: 8,
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#333' },
+  card: {
+    backgroundColor: '#fff', padding: 15, borderRadius: 10,
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    marginTop: 6,
-    elevation: 1,
+    marginTop: 8, elevation: 2
   },
-  itemText: { fontSize: 16, fontWeight: '500', color: '#333' },
-  actions: { flexDirection: 'row' },
+  cardTitle: { fontSize: 16, fontWeight: '500', color: '#333' },
+  cardActions: { flexDirection: 'row' },
   emptyText: {
-    textAlign: 'center',
-    marginTop: 30,
-    fontSize: 16,
-    color: '#888',
-  },
+    textAlign: 'center', marginTop: 30, fontSize: 16, color: '#888',
+  }
 });

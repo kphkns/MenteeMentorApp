@@ -3,7 +3,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../../db');
 
-
+//--------------------------------------------------//----------------------------------------------------------------------->
 //------------------------Add a department ---------------
 // ✅ Get all departments
 router.get('/departments', (req, res) => {
@@ -53,7 +53,7 @@ router.delete('/departments/:id', (req, res) => {
 
 
 
-//---------------------------------------------------//--------------------------
+//--------------------------------------------------//----------------------------------------------------------------------->
 
 // ✅ Add a course to a department
 
@@ -115,7 +115,161 @@ router.delete('/courses/:id', (req, res) => {
     res.status(200).json({ message: 'Course deleted successfully' });
   });
 });
-
+//--------------------------------------------------//----------------------------------------------------------------------->
 //------------------------ Batch Management ---------------
+
+// ✅ Get all batches
+router.get('/batches', (req, res) => {
+  const query = 'SELECT Batch_id, batch_name FROM batch ORDER BY batch_name ASC';
+  db.query(query, (err, results) => {
+    if (err) return res.status(500).json({ message: 'Failed to fetch batches' });
+    res.status(200).json(results);
+  });
+});
+
+// ✅ Add a new batch with duplicate check
+router.post('/batches', (req, res) => {
+  const { batch_name } = req.body;
+
+  if (!batch_name || !/^\d{4}$/.test(batch_name)) {
+    return res.status(400).json({ message: 'Batch name must be a 4-digit year' });
+  }
+
+  // Check duplicate
+  db.query('SELECT * FROM batch WHERE batch_name = ?', [batch_name], (err, results) => {
+    if (err) return res.status(500).json({ message: 'Database error' });
+    if (results.length > 0) {
+      return res.status(409).json({ message: 'Batch name already exists' });
+    }
+
+    db.query('INSERT INTO batch (batch_name) VALUES (?)', [batch_name], (err, result) => {
+      if (err) return res.status(500).json({ message: 'Failed to add batch' });
+      res.status(201).json({ message: 'Batch added successfully', Batch_id: result.insertId });
+    });
+  });
+});
+
+// ✅ Update batch
+router.put('/batches/:id', (req, res) => {
+  const { id } = req.params;
+  const { batch_name } = req.body;
+
+  if (!batch_name || !/^\d{4}$/.test(batch_name)) {
+    return res.status(400).json({ message: 'Batch name must be a 4-digit year' });
+  }
+
+  // Check for duplicate batch name excluding the current batch
+  db.query('SELECT * FROM batch WHERE batch_name = ? AND Batch_id != ?', [batch_name, id], (err, results) => {
+    if (err) return res.status(500).json({ message: 'Database error' });
+    if (results.length > 0) {
+      return res.status(409).json({ message: 'Batch name already exists' });
+    }
+
+    db.query('UPDATE batch SET batch_name = ? WHERE Batch_id = ?', [batch_name, id], (err) => {
+      if (err) return res.status(500).json({ message: 'Failed to update batch' });
+      res.status(200).json({ message: 'Batch updated successfully' });
+    });
+  });
+});
+
+// ✅ Delete batch
+router.delete('/batches/:id', (req, res) => {
+  db.query('DELETE FROM batch WHERE Batch_id = ?', [req.params.id], (err) => {
+    if (err) return res.status(500).json({ message: 'Failed to delete batch' });
+    res.status(200).json({ message: 'Batch deleted successfully' });
+  });
+});
+//---------------------------------------------------//---------------------------------------------------------------------->
+
+//--------------------------------------------------//----------------------------------------------------------------------->
+
+// Utility function to validate email format
+const isValidEmail = (email) => {
+  const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return regex.test(email);
+};
+
+// Get all faculty members
+router.get('/faculty', (req, res) => {
+  const query = 'SELECT Faculty_id, Name, Email, Dept_ID FROM faculty';
+  db.query(query, (err, results) => {
+    if (err) return res.status(500).json({ message: 'Failed to fetch faculty' });
+    res.status(200).json(results);
+  });
+});
+
+// Add a new faculty member
+router.post('/faculty', (req, res) => {
+  const { Name, Email, Dept_ID, Password } = req.body;
+
+  if (!Name || !Email || !Dept_ID || !Password) {
+    return res.status(400).json({ message: 'Missing fields' });
+  }
+
+  if (!isValidEmail(Email)) {
+    return res.status(400).json({ message: 'Invalid email format' });
+  }
+
+  // Check for duplicate email
+  db.query('SELECT * FROM faculty WHERE Email = ?', [Email], (err, results) => {
+    if (err) return res.status(500).json({ message: 'Database error' });
+    if (results.length > 0) {
+      return res.status(400).json({ message: 'Email already exists' });
+    }
+
+    db.query(
+      'INSERT INTO faculty (Name, Email, Dept_ID, Password) VALUES (?, ?, ?, ?)',
+      [Name, Email, Dept_ID, Password],
+      (err, result) => {
+        if (err) return res.status(500).json({ message: 'Failed to add faculty' });
+        res.status(201).json({ message: 'Faculty added successfully', Faculty_id: result.insertId });
+      }
+    );
+  });
+});
+
+// Update faculty member
+router.put('/faculty/:id', (req, res) => {
+  const { id } = req.params;
+  const { Name, Email, Dept_ID, Password } = req.body;
+
+  if (!Name || !Email || !Dept_ID || !Password) {
+    return res.status(400).json({ message: 'Missing fields' });
+  }
+
+  if (!isValidEmail(Email)) {
+    return res.status(400).json({ message: 'Invalid email format' });
+  }
+
+  // Check if email is used by another faculty
+  db.query('SELECT * FROM faculty WHERE Email = ? AND Faculty_id != ?', [Email, id], (err, results) => {
+    if (err) return res.status(500).json({ message: 'Database error' });
+    if (results.length > 0) {
+      return res.status(400).json({ message: 'Email already in use by another faculty' });
+    }
+
+    db.query(
+      'UPDATE faculty SET Name = ?, Email = ?, Dept_ID = ?, Password = ? WHERE Faculty_id = ?',
+      [Name, Email, Dept_ID, Password, id],
+      (err) => {
+        if (err) return res.status(500).json({ message: 'Failed to update faculty' });
+        res.status(200).json({ message: 'Faculty updated successfully' });
+      }
+    );
+  });
+});
+
+// Delete faculty
+router.delete('/faculty/:id', (req, res) => {
+  const { id } = req.params;
+  db.query('DELETE FROM faculty WHERE Faculty_id = ?', [id], (err) => {
+    if (err) return res.status(500).json({ message: 'Failed to delete faculty' });
+    res.status(200).json({ message: 'Faculty deleted successfully' });
+  });
+});
+
+//--------------------------------------------------//----------------------------------------------------------------------->
+
+
 
 module.exports = router;

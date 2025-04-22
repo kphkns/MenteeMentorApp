@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import FacultyHome from '../faculty/FacultyHome';
 import FacultyProfile from '../faculty/FacultyProfile';
 
+
 const Tab = createBottomTabNavigator();
 
 export default function FacultyStack() {
