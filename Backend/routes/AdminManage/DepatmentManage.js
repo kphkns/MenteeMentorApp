@@ -189,21 +189,29 @@ const isValidEmail = (email) => {
   return regex.test(email);
 };
 
-// Get all faculty members
+// ✅ Get all faculty members with department names
 router.get('/faculty', (req, res) => {
-  const query = 'SELECT Faculty_id, Name, Email, Dept_ID FROM faculty';
+  const query = `
+    SELECT f.Faculty_id, f.Name, f.Email, f.Dept_ID, d.Dept_name
+    FROM faculty f
+    LEFT JOIN department d ON f.Dept_ID = d.Dept_id
+    ORDER BY f.Name ASC
+  `;
   db.query(query, (err, results) => {
-    if (err) return res.status(500).json({ message: 'Failed to fetch faculty' });
+    if (err) {
+      console.error('Error fetching faculty:', err);
+      return res.status(500).json({ message: 'Failed to fetch faculty' });
+    }
     res.status(200).json(results);
   });
 });
 
-// Add a new faculty member
+// ✅ Add a new faculty member
 router.post('/faculty', (req, res) => {
   const { Name, Email, Dept_ID, Password } = req.body;
 
   if (!Name || !Email || !Dept_ID || !Password) {
-    return res.status(400).json({ message: 'Missing fields' });
+    return res.status(400).json({ message: 'All fields are required' });
   }
 
   if (!isValidEmail(Email)) {
@@ -214,7 +222,7 @@ router.post('/faculty', (req, res) => {
   db.query('SELECT * FROM faculty WHERE Email = ?', [Email], (err, results) => {
     if (err) return res.status(500).json({ message: 'Database error' });
     if (results.length > 0) {
-      return res.status(400).json({ message: 'Email already exists' });
+      return res.status(409).json({ message: 'Email already exists' });
     }
 
     db.query(
@@ -228,45 +236,62 @@ router.post('/faculty', (req, res) => {
   });
 });
 
-// Update faculty member
+// ✅ Update faculty member
 router.put('/faculty/:id', (req, res) => {
   const { id } = req.params;
   const { Name, Email, Dept_ID, Password } = req.body;
 
-  if (!Name || !Email || !Dept_ID || !Password) {
-    return res.status(400).json({ message: 'Missing fields' });
+  if (!Name || !Email || !Dept_ID) {
+    return res.status(400).json({ message: 'Name, Email, and Dept_ID are required' });
   }
 
   if (!isValidEmail(Email)) {
     return res.status(400).json({ message: 'Invalid email format' });
   }
 
-  // Check if email is used by another faculty
-  db.query('SELECT * FROM faculty WHERE Email = ? AND Faculty_id != ?', [Email, id], (err, results) => {
-    if (err) return res.status(500).json({ message: 'Database error' });
-    if (results.length > 0) {
-      return res.status(400).json({ message: 'Email already in use by another faculty' });
-    }
+  // Ensure email is not duplicated for another user
+  db.query(
+    'SELECT * FROM faculty WHERE Email = ? AND Faculty_id != ?',
+    [Email, id],
+    (err, results) => {
+      if (err) return res.status(500).json({ message: 'Database error' });
+      if (results.length > 0) {
+        return res.status(409).json({ message: 'Email already in use by another faculty' });
+      }
 
-    db.query(
-      'UPDATE faculty SET Name = ?, Email = ?, Dept_ID = ?, Password = ? WHERE Faculty_id = ?',
-      [Name, Email, Dept_ID, Password, id],
-      (err) => {
+      // Prepare query to update faculty
+      let updateQuery = 'UPDATE faculty SET Name = ?, Email = ?, Dept_ID = ?';
+      let queryParams = [Name, Email, Dept_ID];
+
+      // If password is provided, include it in the query
+      if (Password) {
+        updateQuery += ', Password = ?';
+        queryParams.push(Password);
+      }
+
+      updateQuery += ' WHERE Faculty_id = ?';
+      queryParams.push(id);
+
+      db.query(updateQuery, queryParams, (err) => {
         if (err) return res.status(500).json({ message: 'Failed to update faculty' });
         res.status(200).json({ message: 'Faculty updated successfully' });
-      }
-    );
-  });
+      });
+    }
+  );
 });
 
-// Delete faculty
+// ✅ Delete faculty member
 router.delete('/faculty/:id', (req, res) => {
   const { id } = req.params;
   db.query('DELETE FROM faculty WHERE Faculty_id = ?', [id], (err) => {
-    if (err) return res.status(500).json({ message: 'Failed to delete faculty' });
+    if (err) {
+      console.error('Delete error:', err);
+      return res.status(500).json({ message: 'Failed to delete faculty' });
+    }
     res.status(200).json({ message: 'Faculty deleted successfully' });
   });
 });
+
 
 //--------------------------------------------------//----------------------------------------------------------------------->
 

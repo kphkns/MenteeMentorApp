@@ -53,8 +53,6 @@ export default function AdminStack() {
       <Stack.Screen name="BATCHS" component={BatchsScreen} />
       <Stack.Screen name="STUDENTS" component={StudentsScreen} />
       <Stack.Screen name="FacultyListScreen" component={FacultyListScreen} options={{ title: 'FacultyListScreen' }} />
-      
-
     </Stack.Navigator>
   );
 }
