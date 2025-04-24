@@ -294,7 +294,103 @@ router.delete('/faculty/:id', (req, res) => {
 
 
 //--------------------------------------------------//----------------------------------------------------------------------->
+// ✅ Get all students (UPDATE THIS QUERY)
+router.get('/students', (req, res) => {
+  const query = `
+    SELECT s.Student_id, s.Name, s.Roll_no, s.Email, s.Batch, 
+           s.Dept_ID, d.Dept_name, 
+           s.Course_ID, c.Course_name, 
+           s.Faculty_id, f.Name AS Faculty_name
+    FROM student s
+    LEFT JOIN department d ON s.Dept_ID = d.Dept_id
+    LEFT JOIN course c ON s.Course_ID = c.Course_ID
+    LEFT JOIN faculty f ON s.Faculty_id = f.Faculty_id
+    ORDER BY s.Name ASC
+  `;
+  db.query(query, (err, results) => {
+    if (err) return res.status(500).json({ message: 'Failed to fetch students' });
+    res.status(200).json(results);
+  });
+});
 
+// ✅ Add a new student
+router.post('/students', (req, res) => {
+  const { Name, Roll_no, Email, Password, Batch, Dept_ID, Course_ID, Faculty_id } = req.body;
 
+  if (!Name || !Roll_no || !Email || !Password || !Batch || !Dept_ID || !Course_ID || !Faculty_id) {
+    return res.status(400).json({ message: 'All fields are required' });
+  }
+
+  if (!isValidEmail(Email)) {
+    return res.status(400).json({ message: 'Invalid email format' });
+  }
+
+  // Check duplicate email
+  db.query('SELECT * FROM student WHERE Email = ?', [Email], (err, results) => {
+    if (err) return res.status(500).json({ message: 'Database error' });
+    if (results.length > 0) {
+      return res.status(409).json({ message: 'Email already exists' });
+    }
+
+    const query = `
+      INSERT INTO student (Name, Roll_no, Email, Password, Batch, Dept_ID, Course_ID, Faculty_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+    db.query(query, [Name, Roll_no, Email, Password, Batch, Dept_ID, Course_ID, Faculty_id], (err, result) => {
+      if (err) return res.status(500).json({ message: 'Failed to add student' });
+      res.status(201).json({ message: 'Student added successfully', Student_id: result.insertId });
+    });
+  });
+});
+
+// ✅ Update student
+router.put('/students/:id', (req, res) => {
+  const { id } = req.params;
+  const { Name, Roll_no, Email, Password, Batch, Dept_ID, Course_ID, Faculty_id } = req.body;
+
+  if (!Name || !Roll_no || !Email || !Batch || !Dept_ID || !Course_ID || !Faculty_id) {
+      return res.status(400).json({ message: 'Missing required fields' });
+  }
+
+  if (!isValidEmail(Email)) {
+      return res.status(400).json({ message: 'Invalid email format' });
+  }
+
+  db.query('SELECT * FROM student WHERE Email = ? AND Student_id != ?', [Email, id], (err, results) => {
+      if (err) return res.status(500).json({ message: 'Database error' });
+      if (results.length > 0) {
+          return res.status(409).json({ message: 'Email already in use' });
+      }
+
+      let updateQuery = `
+          UPDATE student 
+          SET Name = ?, Roll_no = ?, Email = ?, Batch = ?, Dept_ID = ?, Course_ID = ?, Faculty_id = ?
+      `;
+      const params = [Name, Roll_no, Email, Batch, Dept_ID, Course_ID, Faculty_id];
+
+      // If Password is provided, add it to the update query
+      if (Password) {
+          updateQuery += ', Password = ?';
+          params.push(Password);
+      }
+
+      updateQuery += ' WHERE Student_id = ?';
+      params.push(id);
+
+      db.query(updateQuery, params, (err) => {
+          if (err) return res.status(500).json({ message: 'Failed to update student' });
+          res.status(200).json({ message: 'Student updated successfully' });
+      });
+  });
+});
+// ✅ Delete student
+router.delete('/students/:id', (req, res) => {
+  const { id } = req.params;
+  db.query('DELETE FROM student WHERE Student_id = ?', [id], (err) => {
+    if (err) return res.status(500).json({ message: 'Failed to delete student' });
+    res.status(200).json({ message: 'Student deleted successfully' });
+  });
+});
+//---------------------------------------------------------------------------------//----------------------------->
 
 module.exports = router;

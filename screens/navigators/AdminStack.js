@@ -14,6 +14,7 @@ import FacultyScreen from '../Admin/AdminManagemtScreen/FacultyScreen';
 import BatchsScreen from '../Admin/AdminManagemtScreen/BatchsScreen';
 import StudentsScreen from '../Admin/AdminManagemtScreen/StudentsScreen';
 import FacultyListScreen from '../Admin/AdminManagemtScreen/FacultyListScreen';
+import StudentListScreen from '../Admin/AdminManagemtScreen/StudentListScreen';
 
 
 const Tab = createBottomTabNavigator();
@@ -53,6 +54,7 @@ export default function AdminStack() {
       <Stack.Screen name="BATCHS" component={BatchsScreen} />
       <Stack.Screen name="STUDENTS" component={StudentsScreen} />
       <Stack.Screen name="FacultyListScreen" component={FacultyListScreen} options={{ title: 'FacultyListScreen' }} />
+      <Stack.Screen name="StudentListScreen" component={StudentListScreen} options={{ title: 'StudentListScreen' }} />
     </Stack.Navigator>
   );
 }
