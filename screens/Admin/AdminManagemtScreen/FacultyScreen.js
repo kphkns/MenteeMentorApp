@@ -13,7 +13,7 @@ import {
 import axios from 'axios';
 import RNPickerSelect from 'react-native-picker-select';
 
-const SERVER_URL = 'http://192.168.225.136:5000'; // Replace with your server IP
+const SERVER_URL = 'http://192.168.153.136:5000'; // Replace with your server IP
 
 export default function FacultyScreen({ navigation }) {
   const [facultyName, setFacultyName] = useState('');

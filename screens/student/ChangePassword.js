@@ -4,7 +4,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'reac
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const SERVER_URL = 'http://192.168.225.136:5000';
+const SERVER_URL = 'http://192.168.153.136:5000';
 
 export default function ChangePassword({ navigation }) {
   const [oldPassword, setOldPassword] = useState('');

@@ -20,7 +20,7 @@ import {
   MaterialCommunityIcons,
 } from "@expo/vector-icons";
 
-const SERVER_URL = "http://192.168.225.136:5000";
+const SERVER_URL = "http://192.168.153.136:5000";
 
 export default function StudentProfile({ navigation }) {
   const [profile, setProfile] = useState(null);

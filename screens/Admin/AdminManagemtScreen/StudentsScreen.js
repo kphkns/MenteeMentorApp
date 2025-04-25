@@ -13,7 +13,7 @@ import RNPickerSelect from 'react-native-picker-select';
 import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
 
-const SERVER_URL = 'http://192.168.225.136:5000'; // Update with your backend IP
+const SERVER_URL = 'http://192.168.153.136:5000'; // Update with your backend IP
 
 export default function AddStudentScreen() {
   const navigation = useNavigation();

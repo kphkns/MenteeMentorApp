@@ -7,7 +7,7 @@ import { Ionicons, FontAwesome } from '@expo/vector-icons';
 import axios from 'axios';
 import RNPickerSelect from 'react-native-picker-select';
 
-const SERVER_URL = 'http://192.168.225.136:5000';
+const SERVER_URL = 'http://192.168.153.136:5000';
 
 export default function StudentListScreen() {
   const [students, setStudents] = useState([]);

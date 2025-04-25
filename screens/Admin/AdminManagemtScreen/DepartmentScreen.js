@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  FlatList, Alert, StyleSheet, ActivityIndicator, ScrollView
+  FlatList, Alert, StyleSheet, ActivityIndicator, Modal, BackHandler
 } from 'react-native';
 import axios from 'axios';
-import { Ionicons, FontAwesome } from '@expo/vector-icons';
+import { Ionicons, Feather } from '@expo/vector-icons';
 
-const SERVER_URL = 'http://192.168.225.136:5000';
+const SERVER_URL = 'http://192.168.153.136:5000';
 
 export default function DepartmentScreen() {
   const [departments, setDepartments] = useState([]);
@@ -14,11 +14,27 @@ export default function DepartmentScreen() {
   const [search, setSearch] = useState('');
   const [editingDept, setEditingDept] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedDepts, setSelectedDepts] = useState([]);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
 
   useEffect(() => {
     fetchDepartments();
   }, []);
+
+  useEffect(() => {
+    const backAction = () => {
+      if (isSelectionMode) {
+        setIsSelectionMode(false);
+        setSelectedDepts([]);
+        return true;
+      }
+      return false;
+    };
+
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+    return () => backHandler.remove();
+  }, [isSelectionMode]);
 
   const fetchDepartments = async () => {
     setLoading(true);
@@ -35,9 +51,7 @@ export default function DepartmentScreen() {
 
   const handleAddOrUpdate = async () => {
     if (!deptName.trim()) return;
-
     try {
-      setSubmitting(true);
       if (editingDept) {
         await axios.put(`${SERVER_URL}/admin/departments/${editingDept.Dept_id}`, {
           Dept_name: deptName.trim()
@@ -49,26 +63,24 @@ export default function DepartmentScreen() {
         });
         Alert.alert('Added', 'Department successfully added');
       }
-
       setDeptName('');
       setEditingDept(null);
+      setModalVisible(false);
       fetchDepartments();
     } catch {
       Alert.alert('Error', 'Could not save department');
-    } finally {
-      setSubmitting(false);
     }
   };
 
-  const handleDelete = (id) => {
-    Alert.alert('Confirm', 'Delete this department?', [
+  const handleDelete = async (ids) => {
+    Alert.alert('Confirm', `Delete ${ids.length} department(s)?`, [
       { text: 'Cancel', style: 'cancel' },
       {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
+        text: 'Delete', style: 'destructive', onPress: async () => {
           try {
-            await axios.delete(`${SERVER_URL}/admin/departments/${id}`);
+            await Promise.all(ids.map(id => axios.delete(`${SERVER_URL}/admin/departments/${id}`)));
+            setSelectedDepts([]);
+            setIsSelectionMode(false);
             fetchDepartments();
           } catch {
             Alert.alert('Error', 'Delete failed');
@@ -78,58 +90,61 @@ export default function DepartmentScreen() {
     ]);
   };
 
+  const toggleSelect = (id) => {
+    if (selectedDepts.includes(id)) {
+      setSelectedDepts(selectedDepts.filter(item => item !== id));
+    } else {
+      setSelectedDepts([...selectedDepts, id]);
+    }
+  };
+
   const filteredDepartments = departments.filter(dept =>
     dept.Dept_name.toLowerCase().includes(search.toLowerCase())
   );
 
-  const renderItem = ({ item }) => (
-    <View style={styles.item}>
-      <Text style={styles.itemText}>{item.Dept_name}</Text>
-      <View style={styles.actions}>
-        <TouchableOpacity onPress={() => {
-          setDeptName(item.Dept_name);
-          setEditingDept(item);
-        }}>
-          <FontAwesome name="edit" size={20} color="#007bff" />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => handleDelete(item.Dept_id)} style={{ marginLeft: 15 }}>
-          <Ionicons name="trash-outline" size={22} color="#d9534f" />
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
+  const renderItem = ({ item }) => {
+    const isSelected = selectedDepts.includes(item.Dept_id);
+    return (
+      <TouchableOpacity
+        onLongPress={() => {
+          setIsSelectionMode(true);
+          toggleSelect(item.Dept_id);
+        }}
+        onPress={() => {
+          if (isSelectionMode) {
+            toggleSelect(item.Dept_id);
+          }
+        }}
+        style={[styles.item, isSelected && { backgroundColor: '#e0f0ff' }]}
+      >
+        <Text style={styles.itemText}>{item.Dept_name}</Text>
+        {!isSelectionMode && (
+          <TouchableOpacity onPress={() => {
+            setDeptName(item.Dept_name);
+            setEditingDept(item);
+            setModalVisible(true);
+          }}>
+            <Feather name="edit" size={18} color="#007bff" />
+          </TouchableOpacity>
+        )}
+      </TouchableOpacity>
+    );
+  };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 30 }}>
-      <View style={styles.headerCard}>
-        <Text style={styles.headerTitle}>Department Management</Text>
-        <Text style={styles.subtext}>Add, edit, and organize departments</Text>
-      </View>
-
-      <TextInput
-        placeholder="Enter Department Name"
-        value={deptName}
-        onChangeText={setDeptName}
-        style={styles.input}
-      />
-
-      <View style={styles.buttonRow}>
-        <TouchableOpacity
-          style={[styles.button, submitting && { opacity: 0.7 }]}
-          onPress={handleAddOrUpdate}
-          disabled={submitting}
-        >
-          <Text style={styles.buttonText}>
-            {editingDept ? 'Update' : 'Add'} Department
-          </Text>
-        </TouchableOpacity>
-
-        {editingDept && (
-          <TouchableOpacity style={styles.cancelBtn} onPress={() => {
-            setEditingDept(null);
-            setDeptName('');
-          }}>
-            <Text style={styles.cancelText}>Cancel</Text>
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Departments</Text>
+        {isSelectionMode ? (
+          <View style={styles.selectionHeader}>
+            <Text style={styles.selectedCount}>{selectedDepts.length} selected</Text>
+            <TouchableOpacity style={styles.addBtn} onPress={() => handleDelete(selectedDepts)}>
+              <Ionicons name="trash-outline" size={20} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <TouchableOpacity style={styles.addBtn} onPress={() => setModalVisible(true)}>
+            <Feather name="plus" size={20} color="#fff" />
           </TouchableOpacity>
         )}
       </View>
@@ -141,8 +156,6 @@ export default function DepartmentScreen() {
         style={styles.searchInput}
       />
 
-      <View style={styles.divider} />
-
       {loading ? (
         <ActivityIndicator size="large" color="#007bff" />
       ) : filteredDepartments.length === 0 ? (
@@ -152,107 +165,79 @@ export default function DepartmentScreen() {
           data={filteredDepartments}
           keyExtractor={(item) => item.Dept_id.toString()}
           renderItem={renderItem}
-          scrollEnabled={false}
+          contentContainerStyle={{ paddingBottom: 100 }}
         />
       )}
-    </ScrollView>
+
+      {/* Modal for Add/Update */}
+      <Modal visible={modalVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>{editingDept ? `Editing: ${editingDept.Dept_name}` : 'Add Department'}</Text>
+            <TextInput
+              placeholder="Department Name"
+              value={deptName}
+              onChangeText={setDeptName}
+              style={styles.input}
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.saveBtn} onPress={handleAddOrUpdate}>
+                <Text style={styles.saveText}>{editingDept ? 'Update' : 'Add'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.cancelBtn}
+                onPress={() => {
+                  setModalVisible(false);
+                  setDeptName('');
+                  setEditingDept(null);
+                }}>
+                <Text style={styles.cancelText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#e6f3ff', padding: 20 },
-  headerCard: {
-    backgroundColor: '#007bff',
-    borderRadius: 10,
-    padding: 16,
-    marginBottom: 20,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#fff',
-  },
-  subtext: {
-    fontSize: 14,
-    color: '#cce6ff',
-    marginTop: 4,
-  },
-  input: {
-    backgroundColor: '#fff',
-    padding: 12,
-    borderRadius: 8,
-    borderColor: '#ccc',
-    borderWidth: 1,
-    fontSize: 16,
-    marginBottom: 10
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 15
-  },
-  button: {
-    flex: 1,
-    backgroundColor: '#007bff',
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginRight: 10
-  },
-  buttonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 16
-  },
-  cancelBtn: {
-    backgroundColor: '#f0f0f0',
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderRadius: 8
-  },
-  cancelText: {
-    color: '#555',
-    fontWeight: '500'
+  container: { flex: 1, backgroundColor: '#f7faff', padding: 16 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  title: { fontSize: 22, fontWeight: '700', color: '#1a1a1a' },
+  addBtn: {
+    backgroundColor: '#007bff', padding: 10, borderRadius: 30,
+    alignItems: 'center', justifyContent: 'center'
   },
   searchInput: {
-    backgroundColor: '#fff',
-    padding: 12,
-    borderRadius: 8,
-    borderColor: '#ccc',
-    borderWidth: 1,
-    marginBottom: 15
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#ccc',
-    marginBottom: 10
+    backgroundColor: '#fff', padding: 10, borderRadius: 10, borderColor: '#ccc',
+    borderWidth: 1, marginBottom: 16
   },
   item: {
-    backgroundColor: '#fff',
-    padding: 15,
-    borderRadius: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2
+    backgroundColor: '#fff', padding: 14, borderRadius: 12, flexDirection: 'row',
+    justifyContent: 'space-between', alignItems: 'center', marginBottom: 12,
+    elevation: 2, shadowColor: '#000', shadowOpacity: 0.08,
+    shadowRadius: 4, shadowOffset: { width: 0, height: 2 }
   },
-  itemText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#333'
+  itemText: { fontSize: 16, fontWeight: '500', color: '#333' },
+  actions: { flexDirection: 'row' },
+  emptyText: { textAlign: 'center', marginTop: 30, color: '#666' },
+  modalOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center'
   },
-  actions: {
-    flexDirection: 'row'
+  modalContent: {
+    width: '90%', backgroundColor: '#fff', borderRadius: 10, padding: 20
   },
-  emptyText: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    marginTop: 30
-  }
+  modalTitle: { fontSize: 18, fontWeight: '600', marginBottom: 15, color: '#007bff' },
+  input: {
+    backgroundColor: '#f9f9f9', padding: 10, borderRadius: 8, borderColor: '#ccc',
+    borderWidth: 1, marginBottom: 15
+  },
+  modalActions: { flexDirection: 'row', justifyContent: 'space-between' },
+  saveBtn: { backgroundColor: '#007bff', padding: 10, borderRadius: 8, flex: 1, alignItems: 'center', marginRight: 10 },
+  saveText: { color: '#fff', fontWeight: '600' },
+  cancelBtn: { backgroundColor: '#f0f0f0', padding: 10, borderRadius: 8, flex: 1, alignItems: 'center' },
+  cancelText: { color: '#666', fontWeight: '600' },
+  selectionHeader: { flexDirection: 'row', alignItems: 'center' },
+  selectedCount: { marginRight: 10, fontSize: 16, fontWeight: '600', color: '#d9534f' },
 });
