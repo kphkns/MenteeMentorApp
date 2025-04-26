@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, FlatList, ActivityIndicator,
-  Image, TextInput, TouchableOpacity, Alert, Modal, Pressable
+  Image, TextInput, TouchableOpacity, Modal, Alert, BackHandler, Animated
 } from 'react-native';
 import axios from 'axios';
 import { Ionicons, FontAwesome } from '@expo/vector-icons';
@@ -21,10 +21,28 @@ export default function FacultyListScreen() {
   const [editEmail, setEditEmail] = useState('');
   const [editDept, setEditDept] = useState('');
 
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [fadeAnim] = useState(new Animated.Value(1)); // for smooth animation
+
   useEffect(() => {
     fetchFaculties();
     fetchDepartments();
-  }, []);
+
+    const backAction = () => {
+      if (selectedIds.length > 0) {
+        setSelectedIds([]);
+        return true;
+      }
+      return false;
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      backAction
+    );
+
+    return () => backHandler.remove();
+  }, [selectedIds]);
 
   const fetchFaculties = async () => {
     setLoading(true);
@@ -32,7 +50,7 @@ export default function FacultyListScreen() {
       const res = await axios.get(`${SERVER_URL}/admin/faculty`);
       setFaculties(res.data);
     } catch {
-      Alert.alert('Error', 'Failed to fetch faculty list');
+      alert('Failed to fetch faculty list');
     } finally {
       setLoading(false);
     }
@@ -43,24 +61,8 @@ export default function FacultyListScreen() {
       const res = await axios.get(`${SERVER_URL}/admin/departments`);
       setDepartments(res.data);
     } catch {
-      Alert.alert('Error', 'Failed to fetch departments');
+      alert('Failed to fetch departments');
     }
-  };
-
-  const handleDelete = (id) => {
-    Alert.alert('Confirm Delete', 'Are you sure you want to delete this faculty?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete', style: 'destructive', onPress: async () => {
-          try {
-            await axios.delete(`${SERVER_URL}/admin/faculty/${id}`);
-            fetchFaculties();
-          } catch {
-            Alert.alert('Error', 'Failed to delete faculty');
-          }
-        }
-      }
-    ]);
   };
 
   const openEditModal = (faculty) => {
@@ -72,16 +74,52 @@ export default function FacultyListScreen() {
   };
 
   const saveFacultyChanges = async () => {
+    if (!editName.trim() || !editEmail.trim() || !editDept) {
+      alert('All fields are required');
+      return;
+    }
     try {
       await axios.put(`${SERVER_URL}/admin/faculty/${editFaculty.Faculty_id}`, {
-        Name: editName,
-        Email: editEmail,
+        Name: editName.trim(),
+        Email: editEmail.trim(),
         Dept_ID: editDept,
       });
       setModalVisible(false);
       fetchFaculties();
     } catch {
-      Alert.alert('Error', 'Failed to update faculty');
+      alert('Failed to update faculty');
+    }
+  };
+
+  const handleMultiDelete = () => {
+    Alert.alert('Delete Selected', `Delete ${selectedIds.length} faculty?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete', style: 'destructive', onPress: async () => {
+          try {
+            for (const id of selectedIds) {
+              await axios.delete(`${SERVER_URL}/admin/faculty/${id}`);
+            }
+            setSelectedIds([]);
+            fetchFaculties();
+          } catch {
+            alert('Failed to delete selected faculty');
+          }
+        }
+      }
+    ]);
+  };
+
+  const toggleSelect = (id) => {
+    Animated.sequence([
+      Animated.timing(fadeAnim, { toValue: 0.5, duration: 150, useNativeDriver: true }),
+      Animated.timing(fadeAnim, { toValue: 1, duration: 150, useNativeDriver: true }),
+    ]).start();
+
+    if (selectedIds.includes(id)) {
+      setSelectedIds(selectedIds.filter((sid) => sid !== id));
+    } else {
+      setSelectedIds([...selectedIds, id]);
     }
   };
 
@@ -91,41 +129,68 @@ export default function FacultyListScreen() {
     (f.Dept_name && f.Dept_name.toLowerCase().includes(search.toLowerCase()))
   );
 
-  const renderFacultyItem = ({ item }) => (
-    <View style={styles.card}>
-      <View style={styles.row}>
-        <Image
-          source={require('../../../assets/default-profile.png')}
-          style={styles.avatar}
-        />
-        <View style={styles.textContainer}>
-          <Text style={styles.name}>{item.Name}</Text>
-          <Text style={styles.email}>{item.Email}</Text>
-          <Text style={styles.department}>{item.Dept_name || 'No Department'}</Text>
-        </View>
-        <View style={styles.actions}>
-          <TouchableOpacity onPress={() => openEditModal(item)}>
-            <FontAwesome name="edit" size={20} color="#007bff" />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => handleDelete(item.Faculty_id)} style={{ marginLeft: 15 }}>
-            <Ionicons name="trash-outline" size={22} color="#d9534f" />
-          </TouchableOpacity>
-        </View>
-      </View>
-    </View>
-  );
+  const renderFacultyItem = ({ item }) => {
+    const isSelected = selectedIds.includes(item.Faculty_id);
+    return (
+      <Animated.View style={{ opacity: fadeAnim }}>
+        <TouchableOpacity
+          onLongPress={() => toggleSelect(item.Faculty_id)}
+          onPress={() => {
+            if (selectedIds.length > 0) {
+              toggleSelect(item.Faculty_id);
+            }
+          }}
+          style={[
+            styles.itemContainer,
+            isSelected && { backgroundColor: '#cce5ff' }
+          ]}
+        >
+          <Image
+            source={require('../../../assets/default-profile.png')}
+            style={styles.avatar}
+          />
+          <View style={styles.textContainer}>
+            <Text style={styles.name}>{item.Name}</Text>
+            <Text style={styles.role}>{item.Dept_name || 'No Department'}</Text>
+          </View>
+          <View style={styles.iconContainer}>
+            <TouchableOpacity onPress={() => openEditModal(item)}>
+              <FontAwesome name="edit" size={18} color="#007bff" />
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Animated.View>
+    );
+  };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>Faculty Contacts</Text>
+      {/* Header */}
+      <View style={styles.headerWrapper}>
+        <Text style={styles.headerText}>Faculty List</Text>
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={selectedIds.length > 0 ? handleMultiDelete : () => {}}
+        >
+          <Ionicons name={selectedIds.length > 0 ? "trash" : "add"} size={24} color="#fff" />
+          {selectedIds.length > 0 && (
+            <Text style={styles.selectedCount}> ({selectedIds.length})</Text>
+          )}
+        </TouchableOpacity>
+      </View>
 
-      <TextInput
-        placeholder="Search by name, email or department..."
-        value={search}
-        onChangeText={setSearch}
-        style={styles.searchInput}
-      />
+      {/* Search */}
+      <View style={styles.searchWrapper}>
+        <Ionicons name="search" size={20} color="#ccc" style={styles.searchIcon} />
+        <TextInput
+          placeholder="Search for faculty..."
+          value={search}
+          onChangeText={setSearch}
+          style={styles.searchInput}
+        />
+      </View>
 
+      {/* List */}
       {loading ? (
         <ActivityIndicator size="large" color="#007bff" />
       ) : (
@@ -133,113 +198,129 @@ export default function FacultyListScreen() {
           data={filteredFaculties}
           renderItem={renderFacultyItem}
           keyExtractor={(item) => item.Faculty_id.toString()}
-          contentContainerStyle={{ paddingBottom: 30 }}
+          contentContainerStyle={{ paddingBottom: 100 }}
         />
       )}
 
       {/* Edit Modal */}
-      <Modal
-        visible={modalVisible}
-        transparent
-        animationType="slide"
-      >
-        <View style={styles.modalBackground}>
-          <View style={styles.modalCard}>
+      <Modal visible={modalVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Edit Faculty</Text>
 
             <TextInput
+              placeholder="Name"
               value={editName}
               onChangeText={setEditName}
-              placeholder="Name"
               style={styles.input}
             />
             <TextInput
+              placeholder="Email"
               value={editEmail}
               onChangeText={setEditEmail}
-              placeholder="Email"
               style={styles.input}
               keyboardType="email-address"
             />
+            <Picker
+              selectedValue={editDept}
+              onValueChange={(itemValue) => setEditDept(itemValue)}
+              style={styles.picker}
+            >
+              <Picker.Item label="Select Department" value="" />
+              {departments.map((dept) => (
+                <Picker.Item
+                  key={dept.Dept_id}
+                  label={dept.Dept_name}
+                  value={dept.Dept_id}
+                />
+              ))}
+            </Picker>
 
-            <View style={styles.pickerWrapper}>
-              <Picker
-                selectedValue={editDept}
-                onValueChange={(value) => setEditDept(value)}
-              >
-                <Picker.Item label="Select Department" value="" />
-                {departments.map((dept) => (
-                  <Picker.Item key={dept.Dept_id} label={dept.Dept_name} value={dept.Dept_id} />
-                ))}
-              </Picker>
-            </View>
-
-            <View style={styles.modalButtons}>
+            <View style={styles.modalActions}>
               <TouchableOpacity style={styles.saveBtn} onPress={saveFacultyChanges}>
                 <Text style={styles.saveText}>Save</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => setModalVisible(false)}>
+              <TouchableOpacity
+                style={styles.cancelBtn}
+                onPress={() => {
+                  setModalVisible(false);
+                  setEditFaculty(null);
+                }}
+              >
                 <Text style={styles.cancelText}>Cancel</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
+
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f3f6fb', padding: 16 },
-  header: { fontSize: 22, fontWeight: '700', color: '#222', marginBottom: 10 },
-  searchInput: {
-    backgroundColor: '#fff', padding: 10, borderRadius: 8,
-    borderColor: '#ccc', borderWidth: 1, marginBottom: 15
+  container: { flex: 1, backgroundColor: '#f9fafd', padding: 16 },
+  headerWrapper: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    marginBottom: 16,
   },
-  card: {
-    backgroundColor: '#fff', padding: 14, borderRadius: 12,
-    marginBottom: 12, elevation: 3, shadowColor: '#000',
-    shadowOpacity: 0.08, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }
+  headerText: { fontSize: 26, fontWeight: '700', color: '#222' },
+  addButton: {
+    backgroundColor: '#007bff', flexDirection: 'row',
+    alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: 14, height: 36, borderRadius: 18,
   },
-  row: { flexDirection: 'row', alignItems: 'center' },
+  selectedCount: { color: '#fff', fontWeight: '600', marginLeft: 6 },
+  searchWrapper: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#fff', borderRadius: 12, paddingHorizontal: 12,
+    paddingVertical: 8, marginBottom: 16,
+  },
+  searchIcon: { marginRight: 8 },
+  searchInput: { flex: 1 },
+  itemContainer: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#fff', borderRadius: 12, padding: 12,
+    marginBottom: 12, elevation: 1,
+  },
   avatar: {
-    width: 44, height: 44, borderRadius: 22, marginRight: 12,
-    backgroundColor: '#dfe6ed'
+    width: 48, height: 48, borderRadius: 24, marginRight: 12,
+    backgroundColor: '#ddd',
   },
   textContainer: { flex: 1 },
   name: { fontSize: 16, fontWeight: '600', color: '#333' },
-  email: { fontSize: 14, color: '#888', marginTop: 2 },
-  department: { fontSize: 13, color: '#555', marginTop: 1 },
-  actions: { flexDirection: 'row' },
-
-  // Modal
-  modalBackground: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center'
+  role: { fontSize: 14, color: '#777', marginTop: 2 },
+  iconContainer: { flexDirection: 'row', alignItems: 'center' },
+  modalOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center', alignItems: 'center'
   },
-  modalCard: {
+  modalContent: {
     width: '90%', backgroundColor: '#fff', borderRadius: 12, padding: 20
   },
   modalTitle: {
-    fontSize: 18, fontWeight: '700', color: '#007bff', marginBottom: 15
+    fontSize: 18, fontWeight: '600', color: '#007bff',
+    marginBottom: 16, textAlign: 'center'
   },
   input: {
-    backgroundColor: '#f9f9f9', padding: 10, borderRadius: 8,
-    borderColor: '#ccc', borderWidth: 1, marginBottom: 10
+    backgroundColor: '#f1f1f1', padding: 10, borderRadius: 8,
+    marginBottom: 12, borderColor: '#ccc', borderWidth: 1
   },
-  pickerWrapper: {
-    borderColor: '#ccc', borderWidth: 1, borderRadius: 8,
-    marginBottom: 15, backgroundColor: '#fff'
+  picker: {
+    backgroundColor: '#f1f1f1', borderRadius: 8,
+    marginBottom: 12, height: 50
   },
-  modalButtons: {
+  modalActions: {
     flexDirection: 'row', justifyContent: 'space-between', marginTop: 10
   },
   saveBtn: {
     backgroundColor: '#007bff', padding: 10, borderRadius: 8,
-    flex: 1, alignItems: 'center', marginRight: 8
-  },
-  cancelBtn: {
-    backgroundColor: '#f0f0f0', padding: 10, borderRadius: 8,
-    flex: 1, alignItems: 'center'
+    flex: 1, alignItems: 'center', marginRight: 10
   },
   saveText: { color: '#fff', fontWeight: '600' },
-  cancelText: { color: '#666', fontWeight: '600' },
+  cancelBtn: {
+    backgroundColor: '#ccc', padding: 10, borderRadius: 8,
+    flex: 1, alignItems: 'center'
+  },
+  cancelText: { color: '#333', fontWeight: '600' }
 });
