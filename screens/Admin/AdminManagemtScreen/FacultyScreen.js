@@ -9,6 +9,7 @@ import {
   Alert,
   StyleSheet,
   Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import axios from 'axios';
 import RNPickerSelect from 'react-native-picker-select';
@@ -83,97 +84,114 @@ export default function FacultyScreen({ navigation }) {
   }));
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 30 }}>
-      <View style={styles.card}>
-        <Text style={styles.header}>📚 Faculty Management</Text>
-        <Text style={styles.subheader}>Add, edit, and manage faculty members</Text>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={{ flex: 1 }}
+    >
+      <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+        <View style={styles.card}>
+          <Text style={styles.title}>👨‍🏫 Add Faculty</Text>
+          <Text style={styles.subtitle}>Fill the details below carefully</Text>
 
-        <TextInput
-          placeholder="Faculty Name"
-          value={facultyName}
-          onChangeText={setFacultyName}
-          style={styles.input}
-        />
-
-        <TextInput
-          placeholder="Faculty Email"
-          value={facultyEmail}
-          onChangeText={setFacultyEmail}
-          style={styles.input}
-          keyboardType="email-address"
-        />
-
-        <TextInput
-          placeholder="Faculty Password"
-          value={facultyPassword}
-          onChangeText={setFacultyPassword}
-          style={styles.input}
-          secureTextEntry
-        />
-
-        <View style={styles.pickerWrapper}>
-          <RNPickerSelect
-            onValueChange={setSelectedDept}
-            items={departmentOptions}
-            placeholder={{ label: 'Select Department...', value: null }}
-            style={{
-              inputIOS: styles.picker,
-              inputAndroid: styles.picker,
-              placeholder: { color: '#999' },
-            }}
-            value={selectedDept}
+          <Text style={styles.label}>Name</Text>
+          <TextInput
+            placeholder="Enter faculty name"
+            value={facultyName}
+            onChangeText={setFacultyName}
+            style={styles.input}
           />
+
+          <Text style={styles.label}>Email</Text>
+          <TextInput
+            placeholder="Enter email"
+            value={facultyEmail}
+            onChangeText={setFacultyEmail}
+            style={styles.input}
+            keyboardType="email-address"
+          />
+
+          <Text style={styles.label}>Password</Text>
+          <TextInput
+            placeholder="Enter password"
+            value={facultyPassword}
+            onChangeText={setFacultyPassword}
+            style={styles.input}
+            secureTextEntry
+          />
+
+          <Text style={styles.label}>Department</Text>
+          <View style={styles.pickerWrapper}>
+            <RNPickerSelect
+              onValueChange={setSelectedDept}
+              items={departmentOptions}
+              placeholder={{ label: 'Select Department...', value: null }}
+              style={{
+                inputIOS: styles.picker,
+                inputAndroid: styles.picker,
+                placeholder: { color: '#6c757d' },
+              }}
+              value={selectedDept}
+            />
+          </View>
+
+          <TouchableOpacity
+            style={[styles.button, submitting && { backgroundColor: '#6c757d' }]}
+            onPress={handleAddFaculty}
+            disabled={submitting}
+          >
+            <Text style={styles.buttonText}>{submitting ? 'Submitting...' : 'Add Faculty'}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={() => navigation.navigate('FacultyListScreen')}
+          >
+            <Text style={styles.secondaryButtonText}>View Faculty List ➔</Text>
+          </TouchableOpacity>
         </View>
 
-        <TouchableOpacity
-          style={[styles.button, submitting && { opacity: 0.7 }]}
-          onPress={handleAddFaculty}
-          disabled={submitting}
-        >
-          <Text style={styles.buttonText}>
-            {submitting ? 'Adding...' : 'Add Faculty'}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.button, { marginTop: 20 }]}
-          onPress={() => navigation.navigate('FacultyListScreen')}
-        >
-          <Text style={styles.buttonText}>View Faculty List</Text>
-        </TouchableOpacity>
-      </View>
-
-      {loading && <ActivityIndicator size="large" color="#007bff" style={{ marginTop: 20 }} />}
-    </ScrollView>
+        {loading && <ActivityIndicator size="large" color="#007bff" style={{ marginTop: 20 }} />}
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#e6f3ff',
-    padding: 16,
+    backgroundColor: '#f0f4f7',
+  },
+  contentContainer: {
+    padding: 20,
+    paddingBottom: 40,
   },
   card: {
-    backgroundColor: '#e6f3ff',
-    borderRadius: 16,
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
     padding: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 6,
   },
-  header: {
-    fontSize: 22,
+  title: {
+    fontSize: 24,
     fontWeight: '700',
     color: '#007bff',
-    marginBottom: 4,
+    marginBottom: 8,
   },
-  subheader: {
+  subtitle: {
     fontSize: 14,
     color: '#6c757d',
     marginBottom: 20,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#495057',
+    marginBottom: 6,
+    marginTop: 12,
   },
   input: {
     backgroundColor: '#f8f9fa',
@@ -181,8 +199,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 10,
     padding: 12,
-    marginBottom: 15,
     fontSize: 16,
+    marginBottom: 5,
   },
   pickerWrapper: {
     backgroundColor: '#f8f9fa',
@@ -190,6 +208,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ced4da',
     marginBottom: 15,
+    marginTop: 4,
   },
   picker: {
     paddingVertical: 12,
@@ -200,12 +219,21 @@ const styles = StyleSheet.create({
   button: {
     backgroundColor: '#007bff',
     paddingVertical: 14,
-    borderRadius: 10,
+    borderRadius: 12,
     alignItems: 'center',
-    marginTop: 10,
+    marginTop: 20,
   },
   buttonText: {
     color: '#ffffff',
+    fontWeight: '600',
+    fontSize: 17,
+  },
+  secondaryButton: {
+    marginTop: 15,
+    alignItems: 'center',
+  },
+  secondaryButtonText: {
+    color: '#007bff',
     fontWeight: '600',
     fontSize: 16,
   },

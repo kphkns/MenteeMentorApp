@@ -8,12 +8,14 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import RNPickerSelect from 'react-native-picker-select';
 import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
 
-const SERVER_URL = 'http://192.168.153.136:5000'; // Update with your backend IP
+const SERVER_URL = 'http://192.168.153.136:5000';
 
 export default function AddStudentScreen() {
   const navigation = useNavigation();
@@ -77,7 +79,7 @@ export default function AddStudentScreen() {
     try {
       const res = await axios.post(`${SERVER_URL}/admin/students`, newStudent);
       if (res.status === 201) {
-        Alert.alert('Success', 'Student added successfully');
+        Alert.alert('Success ✅', 'Student added successfully');
         setName('');
         setRollNo('');
         setEmail('');
@@ -89,117 +91,240 @@ export default function AddStudentScreen() {
       }
     } catch (err) {
       console.error(err);
-      Alert.alert('Error', 'Failed to add student');
+      Alert.alert('Error ❌', 'Failed to add student');
     } finally {
       setSubmitting(false);
     }
   };
 
   const toPickerItems = (arr, labelKey, valueKey) =>
-    arr.map((item) => ({
-      label: item[labelKey],
-      value: item[valueKey],
-    }));
+    arr.map((item) => ({ label: item[labelKey], value: item[valueKey] }));
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 30 }}>
-      <Text style={styles.title}>Add Student</Text>
-
-      <TextInput placeholder="Name" value={name} onChangeText={setName} style={styles.input} />
-      <TextInput placeholder="Roll No" value={rollNo} onChangeText={setRollNo} style={styles.input} />
-      <TextInput placeholder="Email" value={email} onChangeText={setEmail} style={styles.input} keyboardType="email-address" />
-      <TextInput placeholder="Password" value={password} onChangeText={setPassword} style={styles.input} secureTextEntry />
-
-      <View style={styles.pickerWrapper}>
-        <RNPickerSelect
-          placeholder={{ label: 'Select Batch...', value: null }}
-          value={batch}
-          onValueChange={setBatch}
-          items={toPickerItems(batches, 'batch_name', 'Batch_id')}
-          style={pickerStyle}
-        />
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={{ flex: 1 }}
+    >
+      {/* Top Button Row */}
+      <View style={styles.topButtonRow}>
+        <TouchableOpacity
+          style={styles.excelButton}
+          onPress={() => navigation.navigate('UploadExcelScreen')}
+        >
+          <Text style={styles.excelButtonText}>Add by Excel</Text>
+        </TouchableOpacity>
       </View>
 
-      <View style={styles.pickerWrapper}>
-        <RNPickerSelect
-          placeholder={{ label: 'Select Department...', value: null }}
-          value={department}
-          onValueChange={setDepartment}
-          items={toPickerItems(departments, 'Dept_name', 'Dept_id')}
-          style={pickerStyle}
-        />
-      </View>
+      <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+        <View style={styles.card}>
+          <Text style={styles.title}>🎓 Add Student</Text>
+          <Text style={styles.subtitle}>Fill student details below carefully</Text>
 
-      <View style={styles.pickerWrapper}>
-        <RNPickerSelect
-          placeholder={{ label: 'Select Course...', value: null }}
-          value={course}
-          onValueChange={setCourse}
-          items={toPickerItems(courses, 'Course_name', 'Course_ID')}
-          style={pickerStyle}
-        />
-      </View>
+          <Text style={styles.label}>Name</Text>
+          <TextInput
+            placeholder="Enter name"
+            value={name}
+            onChangeText={setName}
+            style={styles.input}
+          />
 
-      <View style={styles.pickerWrapper}>
-        <RNPickerSelect
-          placeholder={{ label: 'Select Faculty...', value: null }}
-          value={faculty}
-          onValueChange={setFaculty}
-          items={toPickerItems(faculties, 'Name', 'Faculty_id')}
-          style={pickerStyle}
-        />
-      </View>
+          <Text style={styles.label}>Roll Number</Text>
+          <TextInput
+            placeholder="Enter roll number"
+            value={rollNo}
+            onChangeText={setRollNo}
+            style={styles.input}
+          />
 
-      <TouchableOpacity
-        style={[styles.button, submitting && { opacity: 0.7 }]}
-        onPress={handleAddStudent}
-        disabled={submitting}
-      >
-        <Text style={styles.buttonText}>{submitting ? 'Adding...' : 'Add Student'}</Text>
-      </TouchableOpacity>
+          <Text style={styles.label}>Email</Text>
+          <TextInput
+            placeholder="Enter email"
+            value={email}
+            onChangeText={setEmail}
+            style={styles.input}
+            keyboardType="email-address"
+          />
 
-      <TouchableOpacity
-        style={[styles.button, { backgroundColor: '#28a745', marginTop: 10 }]}
-        onPress={() => navigation.navigate('StudentListScreen')}
-      >
-        <Text style={styles.buttonText}>👀 View Student List</Text>
-      </TouchableOpacity>
+          <Text style={styles.label}>Password</Text>
+          <TextInput
+            placeholder="Enter password"
+            value={password}
+            onChangeText={setPassword}
+            style={styles.input}
+            secureTextEntry
+          />
 
-      {loading && <ActivityIndicator size="large" color="#007bff" style={{ marginTop: 20 }} />}
-    </ScrollView>
+          <Text style={styles.label}>Batch</Text>
+          <View style={styles.pickerWrapper}>
+            <RNPickerSelect
+              placeholder={{ label: 'Select Batch...', value: null }}
+              value={batch}
+              onValueChange={setBatch}
+              items={toPickerItems(batches, 'batch_name', 'Batch_id')}
+              style={pickerStyle}
+            />
+          </View>
+
+          <Text style={styles.label}>Department</Text>
+          <View style={styles.pickerWrapper}>
+            <RNPickerSelect
+              placeholder={{ label: 'Select Department...', value: null }}
+              value={department}
+              onValueChange={setDepartment}
+              items={toPickerItems(departments, 'Dept_name', 'Dept_id')}
+              style={pickerStyle}
+            />
+          </View>
+
+          <Text style={styles.label}>Course</Text>
+          <View style={styles.pickerWrapper}>
+            <RNPickerSelect
+              placeholder={{ label: 'Select Course...', value: null }}
+              value={course}
+              onValueChange={setCourse}
+              items={toPickerItems(courses, 'Course_name', 'Course_ID')}
+              style={pickerStyle}
+            />
+          </View>
+
+          <Text style={styles.label}>Faculty</Text>
+          <View style={styles.pickerWrapper}>
+            <RNPickerSelect
+              placeholder={{ label: 'Select Faculty...', value: null }}
+              value={faculty}
+              onValueChange={setFaculty}
+              items={toPickerItems(faculties, 'Name', 'Faculty_id')}
+              style={pickerStyle}
+            />
+          </View>
+
+          <TouchableOpacity
+            style={[styles.button, submitting && { backgroundColor: '#6c757d' }]}
+            onPress={handleAddStudent}
+            disabled={submitting}
+          >
+            <Text style={styles.buttonText}>{submitting ? 'Submitting...' : 'Add Student'}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={() => navigation.navigate('StudentListScreen')}
+          >
+            <Text style={styles.secondaryButtonText}>View Student List ➔</Text>
+          </TouchableOpacity>
+        </View>
+
+        {loading && <ActivityIndicator size="large" color="#007bff" style={{ marginTop: 20 }} />}
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8f9fa', padding: 16 },
-  title: { fontSize: 22, fontWeight: 'bold', marginBottom: 20, color: '#007bff' },
+  container: {
+    flex: 1,
+    backgroundColor: '#f0f4f7',
+  },
+  contentContainer: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  topButtonRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    padding: 10,
+    backgroundColor: '#f0f4f7',
+  },
+  excelButton: {
+    backgroundColor: '#dc3545',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  excelButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 15,
+  },
+  card: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#007bff',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: '#6c757d',
+    marginBottom: 20,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#495057',
+    marginBottom: 6,
+    marginTop: 12,
+  },
   input: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
+    backgroundColor: '#f8f9fa',
     borderColor: '#ced4da',
+    borderWidth: 1,
     borderRadius: 10,
     padding: 12,
-    marginBottom: 15,
     fontSize: 16,
+    marginBottom: 5,
   },
   pickerWrapper: {
-    backgroundColor: '#fff',
+    backgroundColor: '#f8f9fa',
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: '#ced4da',
-    borderRadius: 10,
     marginBottom: 15,
+    marginTop: 4,
   },
   button: {
     backgroundColor: '#007bff',
-    padding: 14,
-    borderRadius: 10,
+    paddingVertical: 14,
+    borderRadius: 12,
     alignItems: 'center',
-    marginTop: 10,
+    marginTop: 20,
   },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  buttonText: {
+    color: '#ffffff',
+    fontWeight: '600',
+    fontSize: 17,
+  },
+  secondaryButton: {
+    marginTop: 15,
+    alignItems: 'center',
+  },
+  secondaryButtonText: {
+    color: '#007bff',
+    fontWeight: '600',
+    fontSize: 16,
+  },
 });
 
 const pickerStyle = {
-  inputIOS: { paddingVertical: 12, paddingHorizontal: 10, color: '#212529', fontSize: 16 },
-  inputAndroid: { paddingVertical: 12, paddingHorizontal: 10, color: '#212529', fontSize: 16 },
+  inputIOS: {
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    color: '#212529',
+    fontSize: 16,
+  },
+  inputAndroid: {
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    color: '#212529',
+    fontSize: 16,
+  },
 };
