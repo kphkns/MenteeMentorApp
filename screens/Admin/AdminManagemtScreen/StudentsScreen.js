@@ -15,8 +15,7 @@ import RNPickerSelect from 'react-native-picker-select';
 import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
 
-const SERVER_URL = 'http://192.168.153.136:5000';
-
+const SERVER_URL = 'http://192.168.72.136:5000'; 
 export default function AddStudentScreen() {
   const navigation = useNavigation();
 
@@ -105,19 +104,19 @@ export default function AddStudentScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={{ flex: 1 }}
     >
-      {/* Top Button Row */}
-      <View style={styles.topButtonRow}>
-        <TouchableOpacity
-          style={styles.excelButton}
-          onPress={() => navigation.navigate('UploadExcelScreen')}
-        >
-          <Text style={styles.excelButtonText}>Add by Excel</Text>
-        </TouchableOpacity>
-      </View>
-
       <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
         <View style={styles.card}>
-          <Text style={styles.title}>🎓 Add Student</Text>
+          {/* Title + Excel button row */}
+          <View style={styles.headerRow}>
+            <Text style={styles.title}>🎓 Add Student</Text>
+            <TouchableOpacity
+              style={styles.excelButtonCompact}
+              onPress={() => navigation.navigate('UploadExcelScreen')}
+            >
+              <Text style={styles.excelButtonText}>By Excel</Text>
+            </TouchableOpacity>
+          </View>
+
           <Text style={styles.subtitle}>Fill student details below carefully</Text>
 
           <Text style={styles.label}>Name</Text>
@@ -229,23 +228,6 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 40,
   },
-  topButtonRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    padding: 10,
-    backgroundColor: '#f0f4f7',
-  },
-  excelButton: {
-    backgroundColor: '#dc3545',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-  },
-  excelButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 15,
-  },
   card: {
     backgroundColor: '#ffffff',
     borderRadius: 20,
@@ -256,11 +238,27 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 6,
   },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   title: {
     fontSize: 24,
     fontWeight: '700',
     color: '#007bff',
-    marginBottom: 8,
+  },
+  excelButtonCompact: {
+    backgroundColor: '#dc3545',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  excelButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 14,
   },
   subtitle: {
     fontSize: 14,

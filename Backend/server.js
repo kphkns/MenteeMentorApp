@@ -15,6 +15,9 @@ app.use(bodyParser.json());
 // ✅ Serve uploaded files
 app.use('/uploads', express.static('uploads'));
 
+// ✅ Serve templates folder (for Excel templates)
+app.use('/templates', express.static('templates'));
+
 // Configure session
 app.use(session({
   secret: 'your-secret-key',
@@ -27,24 +30,26 @@ app.use(session({
 }));
 
 // Routes
-//login
 const loginRoute = require('./routes/Login');
 app.use('/login', loginRoute);
-//Dashbord
+
 const dashboardRoutes = require('./routes/Dashboard');
 app.use('/', dashboardRoutes);
-//logout
+
 const logoutRoute = require('./routes/Logout');
 app.use('/', logoutRoute);
-//student profile
-const studentRoutes = require('../Backend/routes/StudentProfile');
+
+const studentRoutes = require('./routes/StudentProfile');
 app.use('/', studentRoutes);
-//admin profile
+
 const adminRoutes = require('./routes/AdminProfile');
 app.use('/', adminRoutes);
-//admin department management 
+
 const adminDepartmentRoutes = require('./routes/AdminManage/DepatmentManage');
 app.use('/admin', adminDepartmentRoutes);
+
+const facultyProfileRoutes = require('./routes/FacultyProfile');
+app.use('/', facultyProfileRoutes);
 
 // Start server
 app.listen(port, () => {

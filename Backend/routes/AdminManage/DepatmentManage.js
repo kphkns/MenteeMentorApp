@@ -2,6 +2,11 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../../db');
+const path = require('path');
+const multer = require('multer');
+const xlsx = require('xlsx');
+const fs = require('fs');
+
 
 //--------------------------------------------------//----------------------------------------------------------------------->
 //------------------------Add a department ---------------
@@ -313,7 +318,7 @@ router.get('/students', (req, res) => {
   });
 });
 
-// ✅ Add a new student
+// ✅ Add a new student and create mentor card
 router.post('/students', (req, res) => {
   const { Name, Roll_no, Email, Password, Batch, Dept_ID, Course_ID, Faculty_id } = req.body;
 
@@ -325,72 +330,222 @@ router.post('/students', (req, res) => {
     return res.status(400).json({ message: 'Invalid email format' });
   }
 
-  // Check duplicate email
+  // Check for duplicate email
   db.query('SELECT * FROM student WHERE Email = ?', [Email], (err, results) => {
     if (err) return res.status(500).json({ message: 'Database error' });
     if (results.length > 0) {
       return res.status(409).json({ message: 'Email already exists' });
     }
 
-    const query = `
+    // Insert student
+    const insertStudentQuery = `
       INSERT INTO student (Name, Roll_no, Email, Password, Batch, Dept_ID, Course_ID, Faculty_id)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `;
-    db.query(query, [Name, Roll_no, Email, Password, Batch, Dept_ID, Course_ID, Faculty_id], (err, result) => {
-      if (err) return res.status(500).json({ message: 'Failed to add student' });
-      res.status(201).json({ message: 'Student added successfully', Student_id: result.insertId });
-    });
+    db.query(
+      insertStudentQuery,
+      [Name, Roll_no, Email, Password, Batch, Dept_ID, Course_ID, Faculty_id],
+      (err, result) => {
+        if (err) return res.status(500).json({ message: 'Failed to add student' });
+
+        const studentId = result.insertId;
+
+        // ✅ Create mentor card
+        const insertMentorCardQuery = `
+          INSERT INTO mentor_card (Student_id, Faculty_id)
+          VALUES (?, ?)
+        `;
+        db.query(insertMentorCardQuery, [studentId, Faculty_id], (err) => {
+          if (err) {
+            return res.status(500).json({
+              message: 'Student added, but failed to create mentor card',
+              Student_id: studentId,
+            });
+          }
+
+          res.status(201).json({
+            message: 'Student and mentor card added successfully',
+            Student_id: studentId,
+          });
+        });
+      }
+    );
   });
 });
 
-// ✅ Update student
+
+// ✅ Update student and ensure mentor_card exists or is updated
 router.put('/students/:id', (req, res) => {
   const { id } = req.params;
   const { Name, Roll_no, Email, Password, Batch, Dept_ID, Course_ID, Faculty_id } = req.body;
 
   if (!Name || !Roll_no || !Email || !Batch || !Dept_ID || !Course_ID || !Faculty_id) {
-      return res.status(400).json({ message: 'Missing required fields' });
+    return res.status(400).json({ message: 'Missing required fields' });
   }
 
   if (!isValidEmail(Email)) {
-      return res.status(400).json({ message: 'Invalid email format' });
+    return res.status(400).json({ message: 'Invalid email format' });
   }
 
   db.query('SELECT * FROM student WHERE Email = ? AND Student_id != ?', [Email, id], (err, results) => {
-      if (err) return res.status(500).json({ message: 'Database error' });
-      if (results.length > 0) {
-          return res.status(409).json({ message: 'Email already in use' });
-      }
+    if (err) return res.status(500).json({ message: 'Database error' });
+    if (results.length > 0) {
+      return res.status(409).json({ message: 'Email already in use' });
+    }
 
-      let updateQuery = `
-          UPDATE student 
-          SET Name = ?, Roll_no = ?, Email = ?, Batch = ?, Dept_ID = ?, Course_ID = ?, Faculty_id = ?
-      `;
-      const params = [Name, Roll_no, Email, Batch, Dept_ID, Course_ID, Faculty_id];
+    let updateQuery = `
+      UPDATE student 
+      SET Name = ?, Roll_no = ?, Email = ?, Batch = ?, Dept_ID = ?, Course_ID = ?, Faculty_id = ?
+    `;
+    const params = [Name, Roll_no, Email, Batch, Dept_ID, Course_ID, Faculty_id];
 
-      // If Password is provided, add it to the update query
-      if (Password) {
-          updateQuery += ', Password = ?';
-          params.push(Password);
-      }
+    if (Password) {
+      updateQuery += ', Password = ?';
+      params.push(Password);
+    }
 
-      updateQuery += ' WHERE Student_id = ?';
-      params.push(id);
+    updateQuery += ' WHERE Student_id = ?';
+    params.push(id);
 
-      db.query(updateQuery, params, (err) => {
-          if (err) return res.status(500).json({ message: 'Failed to update student' });
-          res.status(200).json({ message: 'Student updated successfully' });
+    db.query(updateQuery, params, (err) => {
+      if (err) return res.status(500).json({ message: 'Failed to update student' });
+
+      // ✅ Handle mentor_card creation or update
+      const checkMentorCardQuery = 'SELECT * FROM mentor_card WHERE student_id = ?';
+      db.query(checkMentorCardQuery, [id], (err, results) => {
+        if (err) return res.status(500).json({ message: 'Error checking mentor card' });
+
+        if (results.length === 0) {
+          // No mentor card exists → Insert new one
+          const insertQuery = `
+            INSERT INTO mentor_card (student_id, faculty_id) VALUES (?, ?)
+          `;
+          db.query(insertQuery, [id, Faculty_id], (err) => {
+            if (err) return res.status(500).json({ message: 'Failed to create mentor card' });
+            return res.status(200).json({ message: 'Student and mentor card created successfully' });
+          });
+        } else {
+          // Mentor card exists → Check if faculty_id needs updating
+          const existingFacultyId = results[0].faculty_id;
+          if (existingFacultyId !== Faculty_id) {
+            const updateCardQuery = `
+              UPDATE mentor_card SET faculty_id = ? WHERE student_id = ?
+            `;
+            db.query(updateCardQuery, [Faculty_id, id], (err) => {
+              if (err) return res.status(500).json({ message: 'Failed to update mentor card' });
+              return res.status(200).json({ message: 'Student and mentor card updated successfully' });
+            });
+          } else {
+            // No change needed
+            return res.status(200).json({ message: 'Student updated successfully' });
+          }
+        }
       });
+    });
   });
 });
-// ✅ Delete student
+
+// ✅ Delete student and associated mentor_card
 router.delete('/students/:id', (req, res) => {
   const { id } = req.params;
-  db.query('DELETE FROM student WHERE Student_id = ?', [id], (err) => {
-    if (err) return res.status(500).json({ message: 'Failed to delete student' });
-    res.status(200).json({ message: 'Student deleted successfully' });
+
+  // First, delete mentor card(s) associated with the student
+  db.query('DELETE FROM mentor_card WHERE student_id = ?', [id], (err) => {
+    if (err) return res.status(500).json({ message: 'Failed to delete mentor card' });
+
+    // Then, delete the student
+    db.query('DELETE FROM student WHERE Student_id = ?', [id], (err) => {
+      if (err) return res.status(500).json({ message: 'Failed to delete student' });
+      res.status(200).json({ message: 'Student and mentor card deleted successfully' });
+    });
   });
 });
+
 //---------------------------------------------------------------------------------//----------------------------->
+
+
+
+// Bulk insert students with duplicate handling
+router.post('/students/bulk-insert', (req, res) => {
+  const { students } = req.body;
+
+  if (!Array.isArray(students) || students.length === 0) {
+    return res.status(400).json({ message: 'No student data provided.' });
+  }
+
+  // Validate required fields except password
+  for (const student of students) {
+    if (!student.Name || !student.Roll_no || !student.Email || !student.Batch || !student.Dept_ID || !student.Course_ID) {
+      return res.status(400).json({ message: 'Missing required fields in one or more student entries.' });
+    }
+  }
+
+  const values = students.map(s => [
+    s.Name,
+    s.Roll_no,
+    s.Email,
+    null,                      // mobile_no
+    s.password || 'Pass1234', // default password
+    '',                      // Address
+    '',                      // photo
+    s.Batch,
+    s.Dept_ID,
+    s.Course_ID,
+    null,                    // Faculty_id
+    null                     // Last_login
+  ]);
+
+  const sql = `
+    INSERT INTO student 
+    (Name, Roll_no, Email, mobile_no, password, Address, photo, Batch, Dept_ID, Course_ID, Faculty_id, Last_login)
+    VALUES ?
+  `;
+
+  db.query(sql, [values], (err, result) => {
+    if (err) {
+      console.error('Bulk insert error:', err);
+
+      // Handle duplicate entry errors
+      if (err.code === 'ER_DUP_ENTRY') {
+        const match = err.sqlMessage.match(/Duplicate entry '(.+)' for key '(.+)'/);
+        if (match) {
+          const duplicateValue = match[1];
+          const key = match[2];
+
+          let fieldName = '';
+          if (key.includes('Email')) {
+            fieldName = 'Email';
+          } else if (key.includes('Roll_no')) {
+            fieldName = 'Roll number';
+          } else {
+            fieldName = key;
+          }
+
+          return res.status(400).json({
+            message: `Duplicate ${fieldName}: ${duplicateValue}. Please fix the conflict and try again.`,
+          });
+        }
+
+        return res.status(400).json({ message: 'Duplicate entry found. Check data.' });
+      }
+
+      return res.status(500).json({ message: 'Server error while inserting students.' });
+    }
+
+    res.json({ message: `${result.affectedRows} students inserted successfully.` });
+  });
+});
+
+
+// ✅ Route: Download Excel Template
+router.get('/admin/students/template', (req, res) => {
+  const filePath = path.join(__dirname, '../../templates/student_upload_format.xlsx');
+  res.download(filePath, 'student_upload_format.xlsx', (err) => {
+    if (err) {
+      console.error('Error sending template:', err);
+      res.status(500).json({ message: 'Could not download template file' });
+    }
+  });
+});
 
 module.exports = router;
