@@ -34,13 +34,24 @@ export default function FacultyProfile({ navigation }) {
   const fetchProfile = async () => {
     try {
       const token = await AsyncStorage.getItem("authToken");
+      if (!token) {
+        throw new Error("No auth token found");
+      }
+
       const res = await axios.get(`${SERVER_URL}/faculty/profile`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setProfile(res.data.profile);
-      setMobile(res.data.profile.mobile_no || "");
+
+      if (res.status === 200) {
+        setProfile(res.data.profile);
+        setMobile(res.data.profile.mobile_no || "");
+      } else {
+        console.error(`Error fetching profile: ${res.statusText}`);
+        throw new Error("Failed to fetch profile data.");
+      }
     } catch (error) {
-      Alert.alert("Error", "Failed to fetch profile data.");
+      console.error("Error fetching profile:", error);
+      Alert.alert("Error", error.message || "Failed to fetch profile data.");
     } finally {
       setLoading(false);
     }
@@ -69,14 +80,19 @@ export default function FacultyProfile({ navigation }) {
 
       const token = await AsyncStorage.getItem("authToken");
       try {
-        await axios.post(`${SERVER_URL}/faculty/upload-photo`, formData, {
+        const response = await axios.post(`${SERVER_URL}/faculty/upload-photo`, formData, {
           headers: {
             "Content-Type": "multipart/form-data",
             Authorization: `Bearer ${token}`,
           },
         });
-        fetchProfile();
+        if (response.status === 200) {
+          fetchProfile();
+        } else {
+          Alert.alert("Error", "Photo upload failed.");
+        }
       } catch (err) {
+        console.error("Error uploading photo:", err);
         Alert.alert("Error", "Photo upload failed.");
       }
     }
@@ -94,7 +110,8 @@ export default function FacultyProfile({ navigation }) {
       setIsEditingMobile(false);
       fetchProfile();
     } catch (err) {
-      Alert.alert("Error", err.response?.data?.message || "Failed to update.");
+      console.error("Error updating mobile:", err);
+      Alert.alert("Error", err.response?.data?.message || "Failed to update mobile.");
     }
   };
 
@@ -114,10 +131,17 @@ export default function FacultyProfile({ navigation }) {
 
   if (loading) {
     return (
-      <ActivityIndicator
-        size="large"
-        style={{ flex: 1, justifyContent: "center" }}
-      />
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#007bff" />
+      </View>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>Failed to load profile data.</Text>
+      </View>
     );
   }
 
@@ -127,7 +151,7 @@ export default function FacultyProfile({ navigation }) {
         <TouchableOpacity onPress={handleImagePick}>
           <Image
             source={
-              profile.photo
+              profile?.photo
                 ? { uri: `${SERVER_URL}/uploads/${profile.photo}` }
                 : require("../../assets/default-profile.png")
             }
@@ -136,6 +160,13 @@ export default function FacultyProfile({ navigation }) {
         </TouchableOpacity>
         <View>
           <Text style={styles.name}>{profile.Name}</Text>
+          {/* Display Last Login Date */}
+          <Text style={styles.login}>
+            Last Login:{" "}
+            {profile.Last_login
+              ? new Date(profile.Last_login).toDateString()
+              : "N/A"}
+          </Text>
         </View>
       </View>
 
@@ -174,8 +205,8 @@ export default function FacultyProfile({ navigation }) {
           </View>
         </View>
         <InfoItem
-          label="DEPARTMENT ID"
-          value={profile.Dept_ID}
+          label="DEPARTMENT"
+          value={profile.Dept_name}
           icon={<FontAwesome5 name="building" size={18} color="#333" />}
         />
       </View>
@@ -222,6 +253,22 @@ const styles = StyleSheet.create({
     backgroundColor: "#e6f3ff",
     flexGrow: 1,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 18,
+    color: "#ff0000",
+    fontWeight: "bold",
+  },
   headerCard: {
     backgroundColor: "#007bff",
     flexDirection: "row",
@@ -242,6 +289,11 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 18,
     fontWeight: "700",
+  },
+  login: {
+    color: "#d9e6ff",
+    fontSize: 13,
+    marginTop: 2,
   },
   infoCard: {
     backgroundColor: "#fff",
@@ -269,39 +321,38 @@ const styles = StyleSheet.create({
   },
   infoValue: {
     fontSize: 16,
-    color: "#555",
+    color: "#333",
   },
   input: {
-    height: 40,
-    borderColor: "#ddd",
+    padding: 5,
     borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    marginVertical: 5,
+    borderColor: "#ccc",
+    borderRadius: 5,
+    marginTop: 10,
+    fontSize: 16,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: "600",
+    fontSize: 18,
+    fontWeight: "bold",
+    marginVertical: 15,
     color: "#333",
-    marginBottom: 10,
-    marginTop: 30,
   },
   menuItem: {
     flexDirection: "row",
     alignItems: "center",
-    marginVertical: 10,
+    marginBottom: 15,
   },
   menuLabel: {
     fontSize: 16,
-    marginLeft: 15,
+    marginLeft: 10,
+    color: "#333",
   },
   logoutBtn: {
+    backgroundColor: "#ff4d4d",
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
     padding: 15,
     borderRadius: 8,
-    backgroundColor: "#d9534f",
     marginTop: 30,
   },
   logoutText: {
@@ -310,9 +361,8 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
   versionText: {
-    fontSize: 12,
-    color: "#888",
     textAlign: "center",
-    marginTop: 40,
+    marginTop: 30,
+    color: "#333",
   },
 });

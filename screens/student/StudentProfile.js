@@ -1,4 +1,3 @@
-// StudentProfile.js
 import React, { useEffect, useState } from "react";
 import {
   View,
@@ -20,7 +19,8 @@ import {
   MaterialCommunityIcons,
 } from "@expo/vector-icons";
 
-const SERVER_URL = "http://http://192.168.72.136:5000:5000";
+// ✅ FIXED SERVER URL
+const SERVER_URL = "http://192.168.72.136:5000";
 
 export default function StudentProfile({ navigation }) {
   const [profile, setProfile] = useState(null);
@@ -129,12 +129,12 @@ export default function StudentProfile({ navigation }) {
     ]);
   };
 
-  if (loading) {
+  // ✅ FIXED: Prevent crash when profile is null
+  if (loading || !profile) {
     return (
-      <ActivityIndicator
-        size="large"
-        style={{ flex: 1, justifyContent: "center" }}
-      />
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" />
+      </View>
     );
   }
 
@@ -144,7 +144,7 @@ export default function StudentProfile({ navigation }) {
         <TouchableOpacity onPress={handleImagePick}>
           <Image
             source={
-              profile.photo
+              profile?.photo
                 ? { uri: `${SERVER_URL}/uploads/${profile.photo}` }
                 : require("../../assets/default-profile.png")
             }
@@ -188,7 +188,9 @@ export default function StudentProfile({ navigation }) {
               </>
             ) : (
               <>
-                <Text style={styles.infoValue}>{mobile || "Not Provided"}</Text>
+                <Text style={styles.infoValue}>
+                  {mobile || "Not Provided"}
+                </Text>
                 <TouchableOpacity onPress={() => setIsEditingMobile(true)}>
                   <Text style={{ color: "#007bff", marginTop: 5 }}>Edit</Text>
                 </TouchableOpacity>
@@ -219,15 +221,12 @@ export default function StudentProfile({ navigation }) {
       </View>
 
       <Text style={styles.sectionTitle}>Settings</Text>
-      {/* <MenuItem
-        icon={<Ionicons name="person-outline" size={22} color="#000" />}
+
+      <MenuItem
+        icon={<MaterialCommunityIcons name="key-change" size={22} color="#000" />}
         label="Change Password"
-        onPress={() => navigation.navigate("ProfileDetails")}
-      /> */}
-      <MenuItem icon={<MaterialCommunityIcons name="key-change" size={22} color="#000" />} label="Change Password" onPress={() => navigation.navigate("ChangePassword")} />
-      {/*  <MenuItem icon={<FontAwesome5 name="university" size={20} color="#000" />} label="Bank Account" onPress={() => navigation.navigate('BankAccount')} />
-      <MenuItem icon={<Ionicons name="phone-portrait-outline" size={22} color="#000" />} label="Device & Credentials" onPress={() => navigation.navigate('DeviceCredentials')} />
-      <MenuItem icon={<MaterialCommunityIcons name="delete-outline" size={22} color="red" />} label="Delete My Account" color="red" onPress={() => navigation.navigate('DeleteAccount')} /> */}
+        onPress={() => navigation.navigate("ChangePassword")}
+      />
 
       <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
         <Ionicons name="log-out-outline" size={22} color="white" />

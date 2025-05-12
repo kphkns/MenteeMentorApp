@@ -1,8 +1,8 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
-const router = express.Router();
 const db = require('../db');
 
+const router = express.Router();
 const JWT_SECRET = 'your_super_secret_key';
 
 router.post('/', (req, res) => {
@@ -50,16 +50,13 @@ router.post('/', (req, res) => {
       userType: userTypeNormalized.charAt(0).toUpperCase() + userTypeNormalized.slice(1),
     };
 
-    // ✅ Update Last_login for student or admin
-    if (userTypeNormalized === 'student' || userTypeNormalized === 'admin') {
-      const updateQuery = `UPDATE ${table} SET Last_login = NOW() WHERE ${idField} = ?`;
-      db.query(updateQuery, [userId], (updateErr) => {
-        if (updateErr) {
-          console.error(`Error updating last login for ${userType}:`, updateErr);
-          // Just log error, don't block login
-        }
-      });
-    }
+    // ✅ Update Last_login for all user types
+    const updateQuery = `UPDATE ${table} SET Last_login = NOW() WHERE ${idField} = ?`;
+    db.query(updateQuery, [userId], (updateErr) => {
+      if (updateErr) {
+        console.error(`Error updating last login for ${userType}:`, updateErr);
+      }
+    });
 
     // ✅ Create and return JWT
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '2h' });
@@ -67,7 +64,7 @@ router.post('/', (req, res) => {
     return res.status(200).json({
       message: `${payload.userType} login successful`,
       token,
-      user: payload
+      user: payload,
     });
   });
 });
