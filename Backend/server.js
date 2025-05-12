@@ -51,6 +51,11 @@ app.use('/admin', adminDepartmentRoutes);
 const facultyProfileRoutes = require('./routes/FacultyProfile');
 app.use('/', facultyProfileRoutes);
 
+const FacultyMentorcards = require('./routes/FacultyMentorcards');
+app.use('/', FacultyMentorcards);
+
+
+
 // Start server
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);

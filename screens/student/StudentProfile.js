@@ -20,7 +20,7 @@ import {
 } from "@expo/vector-icons";
 
 // ✅ FIXED SERVER URL
-const SERVER_URL = "http://192.168.72.136:5000";
+const SERVER_URL = "http://192.168.65.136:5000";
 
 export default function StudentProfile({ navigation }) {
   const [profile, setProfile] = useState(null);

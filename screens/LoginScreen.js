@@ -23,7 +23,7 @@ export default function LoginScreen({ navigation }) {
 
   const handleLogin = async () => {
     try {
-      const response = await fetch('http://192.168.72.136:5000/login', {
+      const response = await fetch('http://192.168.65.136:5000/login', {
 
 
         method: 'POST',
