@@ -55,6 +55,9 @@ app.use('/', FacultyMentorcards);
 const mentorCardRoutes = require('./routes/mentorCard');
 app.use('/mentor-card', mentorCardRoutes);
 
+const studentMentorCardRoute = require('./routes/StudentMentorCard');
+app.use('/api/student-mentor-card', studentMentorCardRoute);
+
 
 // Start server
 app.listen(port, () => {

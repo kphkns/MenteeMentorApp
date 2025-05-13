@@ -8,6 +8,8 @@ import StudentHome from '../student/StudentHome';
 import StudentAppointments from '../student/StudentAppointments';
 import StudentProfile from '../student/StudentProfile';
 import ChangePassword from '../student/ChangePassword';
+import AcadamicThings from '../student/AcadamicThings'
+import StudentMentorcard from '../student/StudentMentorcard'
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -21,6 +23,7 @@ function StudentTabs() {
 
           if (route.name === 'Home') iconName = 'home';
           else if (route.name === 'Appointments') iconName = 'calendar';
+          else if (route.name === 'Acadamic') iconName = 'calendar';
           else if (route.name === 'Profile') iconName = 'person';
 
           return <Ionicons name={iconName} size={size} color={color} />;
@@ -32,6 +35,7 @@ function StudentTabs() {
     >
       <Tab.Screen name="Home" component={StudentHome} />
       <Tab.Screen name="Appointments" component={StudentAppointments} />
+      <Tab.Screen name="Acadamic" component={AcadamicThings} />
       <Tab.Screen name="Profile" component={StudentProfile} />
     </Tab.Navigator>
   );
@@ -42,6 +46,7 @@ export default function StudentStack() {
     <Stack.Navigator screenOptions={{ headerShown: true }}>
       <Stack.Screen name="StudentTabs" component={StudentTabs} options={{ headerShown: false }} />
       <Tab.Screen name="ChangePassword" component={ChangePassword} options={{ tabBarButton: () => null, tabBarVisible: false }} />
+       <Stack.Screen name="StudentMentorcard" component={StudentMentorcard} /> 
     </Stack.Navigator>
   );
 }
