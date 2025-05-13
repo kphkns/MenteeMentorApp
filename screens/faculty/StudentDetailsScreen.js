@@ -11,50 +11,73 @@ import {
 } from 'react-native';
 
 export default function StudentDetailsScreen({ route }) {
-  const { student } = route.params; // Destructure the student data passed from the previous screen
-  const [mentorCard, setMentorCard] = useState(null); // State to hold mentor card data
-  const [loading, setLoading] = useState(true); // State to manage loading state
-  const [isEditing, setIsEditing] = useState(false); // State to toggle between view and edit mode
+  const { student } = route.params;
+  const [mentorCard, setMentorCard] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
-  // Function to fetch the mentor card data
-  const fetchMentorCard = async () => {
+ const fetchMentorCard = async () => {
+  try {
+    const response = await fetch(`http://192.168.65.136:5000/mentor-card/${student.Student_id}`);
+    const data = await response.json();
+
+    if (response.ok) {
+      // Ensure all semester fields are present
+      const defaultFields = {};
+      for (let i = 1; i <= 10; i++) {
+        defaultFields[`sgpa_sem${i}`] = data[`sgpa_sem${i}`] ?? '';
+        defaultFields[`cgpa_sem${i}`] = data[`cgpa_sem${i}`] ?? '';
+        defaultFields[`co_curricular_sem${i}`] = data[`co_curricular_sem${i}`] ?? '';
+        defaultFields[`difficulty_faced_sem${i}`] = data[`difficulty_faced_sem${i}`] ?? '';
+        defaultFields[`disciplinary_action_sem${i}`] = data[`disciplinary_action_sem${i}`] ?? '';
+      }
+
+      setMentorCard({ ...defaultFields, ...data });
+    } else {
+      Alert.alert('Error', data.message || 'Failed to fetch mentor card.');
+    }
+  } catch (error) {
+    console.error('Error fetching mentor card:', error);
+    Alert.alert('Error', 'Something went wrong.');
+  } finally {
+    setLoading(false);
+  }
+};
+
+  const handleInputChange = (key, value) => {
+    setMentorCard(prev => ({ ...prev, [key]: value }));
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
     try {
-      const response = await fetch(`http://192.168.65.136:5000/mentor-card/${student.Student_id}`);
-      const data = await response.json();
+      const response = await fetch(`http://192.168.65.136:5000/mentor-card/${student.Student_id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(mentorCard)
+      });
+      const result = await response.json();
       if (response.ok) {
-        setMentorCard(data);
+        Alert.alert('Success', 'Mentor card updated successfully.');
+        setIsEditing(false);
       } else {
-        Alert.alert('Error', data.message || 'Failed to fetch mentor card.');
+        Alert.alert('Error', result.message || 'Failed to update mentor card.');
       }
     } catch (error) {
-      console.error('Error fetching mentor card:', error);
-      Alert.alert('Error', 'Something went wrong.');
+      console.error('Error updating mentor card:', error);
+      Alert.alert('Error', 'Failed to update mentor card.');
     } finally {
-      setLoading(false);
+      setIsSaving(false);
     }
   };
 
   useEffect(() => {
-    fetchMentorCard(); // Fetch mentor card data when the component is mounted
+    fetchMentorCard();
   }, []);
 
-  // Function to handle changes in editable fields
-  const handleInputChange = (key, value) => {
-    setMentorCard({ ...mentorCard, [key]: value });
-  };
-
-  // List of editable fields that can be modified by the user
-  const editableFields = [
-    'name_of_localgurdian', 'moble_no_of_localgurdent', 'mobile_no_of_parents',
-    'name_of_pareents', 'present_address', 'email_of_parents', 'any_helthissue',
-    ...Array.from({ length: 10 }, (_, i) => `sgpa_sem${i + 1}`),
-    ...Array.from({ length: 10 }, (_, i) => `cgpa_sem${i + 1}`),
-    ...Array.from({ length: 10 }, (_, i) => `co_curricular_sem${i + 1}`),
-    ...Array.from({ length: 10 }, (_, i) => `difficulty_faced_sem${i + 1}`),
-    ...Array.from({ length: 10 }, (_, i) => `disciplinary_action_sem${i + 1}`)
-  ];
-
-  // Renders the semester header row
   const renderSemesterHeader = () => (
     <View style={styles.semesterRow}>
       <Text style={styles.semesterLabel}></Text>
@@ -64,7 +87,6 @@ export default function StudentDetailsScreen({ route }) {
     </View>
   );
 
-  // Renders data for each semester
   const renderSemesterData = (label, keyPrefix) => (
     <View style={styles.semesterRow}>
       <Text style={styles.semesterLabel}>{label}</Text>
@@ -95,35 +117,38 @@ export default function StudentDetailsScreen({ route }) {
           <Text style={styles.subtitle}>(To be retained by the Mentor)</Text>
         </View>
         <TouchableOpacity onPress={() => setIsEditing(!isEditing)} style={styles.editBtn}>
-          <Text style={{ color: 'white' }}>{isEditing ? 'Done' : 'Edit'}</Text>
+          <Text style={{ color: 'white' }}>{isEditing ? 'Cancel' : 'Edit'}</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Part A: Personal Details */}
+      {/* Save Button (visible only in editing mode) */}
+      {isEditing && (
+        <TouchableOpacity onPress={handleSave} style={styles.saveBtn} disabled={isSaving}>
+          <Text style={{ color: 'white' }}>{isSaving ? 'Saving...' : 'Save'}</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Personal Details */}
       <View style={styles.card}>
         <Text style={styles.sectionTitle}>Part A: Personal Details</Text>
-
         <View style={styles.row}>
           <Text style={styles.label}>Name:</Text>
           <Text style={styles.value}>{student.Name || '-'}</Text>
           <Text style={styles.label}>Roll No:</Text>
           <Text style={styles.value}>{student.Roll_no || '-'}</Text>
         </View>
-
         <View style={styles.row}>
           <Text style={styles.label}>Course:</Text>
           <Text style={styles.value}>{student.Course_name || '-'}</Text>
           <Text style={styles.label}>Mentor:</Text>
           <Text style={styles.value}>{student.MentorName || '-'}</Text>
         </View>
-
         <View style={styles.row}>
           <Text style={styles.label}>Batch:</Text>
           <Text style={styles.value}>{student.batch_name || '-'}</Text>
           <Text style={styles.label}>Mobile:</Text>
           <Text style={styles.value}>{student.mobile_no || '-'}</Text>
         </View>
-
         <View style={styles.row}>
           <Text style={styles.label}>Email:</Text>
           <Text style={styles.value}>{student.Email || '-'}</Text>
@@ -131,6 +156,7 @@ export default function StudentDetailsScreen({ route }) {
           <Text style={styles.value}>{student.Address || '-'}</Text>
         </View>
 
+        {/* Editable Fields */}
         <View style={styles.row}>
           <Text style={styles.label}>Health Issues:</Text>
           {isEditing ? (
@@ -153,7 +179,6 @@ export default function StudentDetailsScreen({ route }) {
             <Text style={styles.value}>{mentorCard.mobile_no_of_parents || '-'}</Text>
           )}
         </View>
-
         <View style={styles.row}>
           <Text style={styles.label}>Local Guardian:</Text>
           {isEditing ? (
@@ -176,7 +201,6 @@ export default function StudentDetailsScreen({ route }) {
             <Text style={styles.value}>{mentorCard.moble_no_of_localgurdent || '-'}</Text>
           )}
         </View>
-
         <View style={styles.row}>
           <Text style={styles.label}>Parents' Name:</Text>
           {isEditing ? (
@@ -199,7 +223,6 @@ export default function StudentDetailsScreen({ route }) {
             <Text style={styles.value}>{mentorCard.email_of_parents || '-'}</Text>
           )}
         </View>
-
         <View style={styles.row}>
           <Text style={styles.label}>Present Address:</Text>
           {isEditing ? (
@@ -214,7 +237,7 @@ export default function StudentDetailsScreen({ route }) {
         </View>
       </View>
 
-      {/* Part B: Progress */}
+      {/* Academic Progress */}
       <View style={styles.card}>
         <Text style={styles.sectionTitle}>Part B: Progress</Text>
         {renderSemesterHeader()}
@@ -234,6 +257,10 @@ const styles = StyleSheet.create({
   title: { fontSize: 22, fontWeight: 'bold', color: '#2c3e50' },
   subtitle: { fontSize: 12, fontStyle: 'italic', color: '#7f8c8d' },
   editBtn: { backgroundColor: '#3498db', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 6 },
+  saveBtn: {
+    backgroundColor: 'green', paddingVertical: 10, paddingHorizontal: 18,
+    alignSelf: 'flex-end', borderRadius: 8, marginBottom: 10
+  },
   card: {
     borderWidth: 1, borderColor: '#dcdde1', borderRadius: 12,
     padding: 18, backgroundColor: '#fff', marginBottom: 20,
@@ -253,9 +280,12 @@ const styles = StyleSheet.create({
   input: {
     width: '50%', borderWidth: 1, borderColor: '#dfe6e9', borderRadius: 6,
     paddingHorizontal: 8, paddingVertical: 4, color: '#2d3436', fontSize: 14
-},
-semesterRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-semesterLabel: { width: '25%', fontWeight: '500', fontSize: 14 },
-semesterValue: { width: '7.5%', textAlign: 'center', fontSize: 14, color: '#2d3436' },
-semesterInput: { width: '7.5%', borderWidth: 1, borderColor: '#bdc3c7', padding: 6, fontSize: 14, color: '#2d3436' },
+  },
+  semesterRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+  semesterLabel: { width: '25%', fontWeight: '500', fontSize: 14 },
+  semesterValue: { width: '7.5%', textAlign: 'center', fontSize: 14, color: '#2d3436' },
+  semesterInput: {
+    width: '7.5%', borderWidth: 1, borderColor: '#bdc3c7',
+    padding: 6, fontSize: 14, color: '#2d3436', textAlign: 'center'
+  },
 });
