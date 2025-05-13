@@ -7,25 +7,23 @@ const port = 5000;
 
 // Middleware
 app.use(cors({
-  origin: 'http://localhost:19006', // or your Expo dev URL
+  origin: 'http://localhost:19006', // Replace with your Expo or frontend dev URL
   credentials: true
 }));
 app.use(bodyParser.json());
 
 // ✅ Serve uploaded files
 app.use('/uploads', express.static('uploads'));
-
-// ✅ Serve templates folder (for Excel templates)
 app.use('/templates', express.static('templates'));
 
-// Configure session
+// Session setup
 app.use(session({
   secret: 'your-secret-key',
   resave: false,
   saveUninitialized: false,
   cookie: {
     secure: false,
-    maxAge: 1000 * 60 * 60 * 2 // 2 hours
+    maxAge: 1000 * 60 * 60 * 2
   }
 }));
 
@@ -54,6 +52,8 @@ app.use('/', facultyProfileRoutes);
 const FacultyMentorcards = require('./routes/FacultyMentorcards');
 app.use('/', FacultyMentorcards);
 
+const mentorCardRoutes = require('./routes/mentorCard');
+app.use('/mentor-card', mentorCardRoutes);
 
 
 // Start server
