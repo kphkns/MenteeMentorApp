@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity,
   Alert, StyleSheet, ActivityIndicator, Modal,
-  TextInput, Button
+  TextInput, Button  
 } from 'react-native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -17,7 +17,6 @@ export default function StudentAppointmentsScreen() {
   const [cancelModalVisible, setCancelModalVisible] = useState(false);
   const [selectedAppointmentId, setSelectedAppointmentId] = useState(null);
   const [cancelReason, setCancelReason] = useState('');
-
   const [rescheduleModalVisible, setRescheduleModalVisible] = useState(false);
   const [rescheduleData, setRescheduleData] = useState(null);
   const [rescheduleDate, setRescheduleDate] = useState(new Date());

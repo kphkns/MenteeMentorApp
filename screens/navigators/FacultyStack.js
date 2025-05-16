@@ -8,6 +8,9 @@ import FacultyHome from '../faculty/FacultyHome';
 import FacultyProfile from '../faculty/FacultyProfile';
 import ManageMentorcard from '../faculty/ManageMentorcard';
 import StudentDetailsScreen from '../faculty/StudentDetailsScreen';
+import FacultyAppoinment from '../faculty/FacultyAppoinment'
+import FacultyAppointlist from '../faculty/FacultyAppointlist'
+import FacultyHistoryScreen from '../faculty/FacultyHistoryScreen'
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -20,6 +23,7 @@ function FacultyTabs() {
         tabBarIcon: ({ color, size }) => {
           let iconName;
           if (route.name === 'Home') iconName = 'home';
+          else if (route.name === 'Appoinment') iconName = 'construct';
           else if (route.name === 'Card') iconName = 'construct';
           else if (route.name === 'Profile') iconName = 'person';
           return <Ionicons name={iconName} size={size} color={color} />;
@@ -30,6 +34,7 @@ function FacultyTabs() {
       })}
     >
       <Tab.Screen name="Home" component={FacultyHome} />
+       <Tab.Screen name="Appoinment" component={FacultyAppoinment} />
       <Tab.Screen name="Card" component={ManageMentorcard} />
       <Tab.Screen name="Profile" component={FacultyProfile} />
     </Tab.Navigator>
@@ -49,6 +54,16 @@ export default function FacultyStack() {
         name="StudentDetailsScreen"
         component={StudentDetailsScreen}
         options={{ title: 'Student Details' }}
+      />
+       <Stack.Screen
+        name="FacultyAppointlist"
+        component={FacultyAppointlist}
+        options={{ title: 'FacultyAppointlist' }}
+      />
+      <Stack.Screen
+        name="FacultyHistoryScreen"
+        component={FacultyHistoryScreen}
+        options={{ title: 'FacultyHistoryScreen' }}
       />
     </Stack.Navigator>
   );

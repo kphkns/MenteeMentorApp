@@ -61,7 +61,8 @@ app.use('/api', studentMentorCardRoute);
 const appointmentRoutes = require('./routes/Appointments');
 app.use('/api/appointments', appointmentRoutes);
 
-
+const facultyAppointmentsRoutes = require('./routes/FacultyAppointments');
+app.use('/api/faculty', facultyAppointmentsRoutes);
 
 // Start server
 app.listen(port, () => {
