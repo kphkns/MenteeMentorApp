@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, TextInput, Alert, ScrollView, TouchableOpacity, StyleSheet
+  View, Text, TextInput, Alert, ScrollView,
+  TouchableOpacity, StyleSheet, Platform
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
@@ -121,74 +122,76 @@ export default function StudentAppointmentScreen({ navigation }) {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.heading}>📅 Book Appointment</Text>
+      <Text style={styles.heading}>📅 Book an Appointment</Text>
 
-      <Text style={styles.label}>Select Date</Text>
-      <TouchableOpacity style={styles.selector} onPress={() => setShowDatePicker(true)}>
-        <Text>{date.toDateString()}</Text>
-      </TouchableOpacity>
-      <DateTimePickerModal
-        isVisible={showDatePicker}
-        mode="date"
-        minimumDate={new Date()}
-        date={date}
-        onConfirm={handleDateChange}
-        onCancel={() => setShowDatePicker(false)}
-      />
+      <View style={styles.card}>
+        <Text style={styles.label}>Select Date</Text>
+        <TouchableOpacity style={styles.selector} onPress={() => setShowDatePicker(true)}>
+          <Text>{date.toDateString()}</Text>
+        </TouchableOpacity>
+        <DateTimePickerModal
+          isVisible={showDatePicker}
+          mode="date"
+          minimumDate={new Date()}
+          date={date}
+          onConfirm={handleDateChange}
+          onCancel={() => setShowDatePicker(false)}
+        />
 
-      <Text style={styles.label}>Select Time</Text>
-      <TouchableOpacity style={styles.selector} onPress={() => setShowTimePicker(true)}>
-        <Text>{formatTime12Hour(date)}</Text>
-      </TouchableOpacity>
-      <DateTimePickerModal
-        isVisible={showTimePicker}
-        mode="time"
-        date={date}
-        onConfirm={handleTimeChange}
-        onCancel={() => setShowTimePicker(false)}
-      />
+        <Text style={styles.label}>Select Time</Text>
+        <TouchableOpacity style={styles.selector} onPress={() => setShowTimePicker(true)}>
+          <Text>{formatTime12Hour(date)}</Text>
+        </TouchableOpacity>
+        <DateTimePickerModal
+          isVisible={showTimePicker}
+          mode="time"
+          date={date}
+          onConfirm={handleTimeChange}
+          onCancel={() => setShowTimePicker(false)}
+        />
 
-      <Text style={styles.label}>Duration (minutes)</Text>
-      <TextInput
-        style={styles.input}
-        value={duration}
-        onChangeText={setDuration}
-        keyboardType="numeric"
-        placeholder="e.g. 30"
-      />
+        <Text style={styles.label}>Duration (minutes)</Text>
+        <TextInput
+          style={styles.input}
+          value={duration}
+          onChangeText={setDuration}
+          keyboardType="numeric"
+          placeholder="e.g. 30"
+        />
 
-      <Text style={styles.label}>Meeting Mode</Text>
-      <View style={styles.pickerWrapper}>
-        <Picker selectedValue={meetingMode} onValueChange={setMeetingMode}>
-          <Picker.Item label="Online" value="online" />
-          <Picker.Item label="Offline (Office Room)" value="offline" />
-        </Picker>
+        <Text style={styles.label}>Meeting Mode</Text>
+        <View style={styles.pickerWrapper}>
+          <Picker selectedValue={meetingMode} onValueChange={setMeetingMode} mode="dropdown">
+            <Picker.Item label="Online" value="online" />
+            <Picker.Item label="Offline (Office Room)" value="offline" />
+          </Picker>
+        </View>
+
+        {meetingMode === 'online' && (
+          <>
+            <Text style={styles.label}>Zoom/Meet Link</Text>
+            <TextInput
+              style={styles.input}
+              value={location}
+              onChangeText={setLocation}
+              placeholder="Enter video call link"
+            />
+          </>
+        )}
+
+        <Text style={styles.label}>Message (optional)</Text>
+        <TextInput
+          style={styles.textarea}
+          value={message}
+          onChangeText={setMessage}
+          multiline
+          placeholder="Add any details for the mentor..."
+        />
+
+        <TouchableOpacity style={styles.button} onPress={onBookAppointment}>
+          <Text style={styles.buttonText}>📌 Confirm Booking</Text>
+        </TouchableOpacity>
       </View>
-
-      {meetingMode === 'online' && (
-        <>
-          <Text style={styles.label}>Zoom/Meet Link</Text>
-          <TextInput
-            style={styles.input}
-            value={location}
-            onChangeText={setLocation}
-            placeholder="Enter meeting link"
-          />
-        </>
-      )}
-
-      <Text style={styles.label}>Message (optional)</Text>
-      <TextInput
-        style={styles.textarea}
-        value={message}
-        onChangeText={setMessage}
-        multiline
-        placeholder="Say something to your mentor..."
-      />
-
-      <TouchableOpacity style={styles.button} onPress={onBookAppointment}>
-        <Text style={styles.buttonText}>📌 Book Appointment</Text>
-      </TouchableOpacity>
     </ScrollView>
   );
 }
@@ -196,59 +199,77 @@ export default function StudentAppointmentScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     padding: 20,
-    backgroundColor: '#f8fafc',
+    paddingBottom: 60,
+    backgroundColor: '#f1f5f9',
   },
   heading: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '700',
-    marginBottom: 20,
-    textAlign: 'center',
     color: '#1e293b',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  card: {
+    backgroundColor: '#ffffff',
+    padding: 18,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
   },
   label: {
+    marginTop: 12,
     fontWeight: '600',
-    marginTop: 16,
-    marginBottom: 4,
     color: '#334155',
+    marginBottom: 6,
   },
   selector: {
-    backgroundColor: '#e2e8f0',
+    backgroundColor: '#f8fafc',
     padding: 12,
-    borderRadius: 6,
-  },
-  pickerWrapper: {
-    backgroundColor: '#e2e8f0',
-    borderRadius: 6,
-    marginBottom: 10,
-  },
-  input: {
-    borderBottomWidth: 1,
-    borderColor: '#cbd5e1',
-    paddingVertical: 8,
-    paddingHorizontal: 6,
-    backgroundColor: '#fff',
-    borderRadius: 4,
-  },
-  textarea: {
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: '#cbd5e1',
+  },
+  input: {
     backgroundColor: '#fff',
-    height: 80,
-    padding: 10,
-    borderRadius: 6,
-    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    paddingHorizontal: 12,
+    paddingVertical: Platform.OS === 'ios' ? 12 : 8,
+    borderRadius: 8,
+  },
+  pickerWrapper: {
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  textarea: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    padding: 12,
+    borderRadius: 8,
     textAlignVertical: 'top',
+    minHeight: 80,
   },
   button: {
     backgroundColor: '#2563eb',
+    marginTop: 20,
     paddingVertical: 14,
-    borderRadius: 6,
-    marginTop: 10,
+    borderRadius: 10,
     alignItems: 'center',
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 3,
   },
   buttonText: {
     color: '#fff',
-    fontWeight: '700',
     fontSize: 16,
+    fontWeight: '700',
   },
 });

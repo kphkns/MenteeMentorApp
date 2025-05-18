@@ -116,7 +116,12 @@ router.get('/mine', verifyToken, (req, res) => {
       a.meeting_mode,
       a.location, 
       a.status, 
-      a.message
+      a.message,
+      a.reschedule_reason,
+      a.cancel_reason,
+      a.cancelled_by,
+      a.created_at,
+      a.updated_at
     FROM appointment a
     JOIN faculty f ON a.faculty_id = f.Faculty_id
     WHERE a.student_id = ?
@@ -326,6 +331,29 @@ router.get('/history', verifyToken, (req, res) => {
     }
 
     res.json(results);
+  });
+});
+// DELETE /api/appointments/:id
+router.delete('/:id', verifyToken, (req, res) => {
+  const appointmentId = req.params.id;
+  const studentId = req.user.id;
+
+  const query = `
+    DELETE FROM appointment
+    WHERE appointment_id = ? AND student_id = ? AND status = 'pending'
+  `;
+
+  db.query(query, [appointmentId, studentId], (err, result) => {
+    if (err) {
+      console.error('Error deleting appointment:', err);
+      return res.status(500).json({ message: 'Failed to delete appointment' });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'No matching pending appointment found' });
+    }
+
+    res.json({ message: 'Pending appointment deleted successfully' });
   });
 });
 

@@ -5,7 +5,7 @@ const db = require('../db');
 const verifyToken = require('../middleware/verifyToken');
 
 // Get all appointments for the logged-in faculty
-// Get all appointments for the logged-in faculty
+// Get all appointments for the logged-in faculty (with message, duration, created_at, updated_at)
 router.get('/appointments', verifyToken, (req, res) => {
   const { id, userType } = req.user;
 
@@ -16,7 +16,8 @@ router.get('/appointments', verifyToken, (req, res) => {
   const query = `
     SELECT 
       a.appointment_id, a.date, a.time, a.duration, a.status, a.message,
-      a.meeting_mode, a.location, a.student_id, s.Name AS student_name
+      a.meeting_mode, a.location, a.student_id, s.Name AS student_name,
+      a.created_at, a.updated_at
     FROM appointment a
     JOIN student s ON a.student_id = s.Student_id
     WHERE a.faculty_id = ?
@@ -31,6 +32,7 @@ router.get('/appointments', verifyToken, (req, res) => {
     res.json(results);
   });
 });
+
 
 // Accept, cancel, or complete appointment by faculty (with cancel_reason if cancelled)
 router.patch('/appointments/:id/status', verifyToken, (req, res) => {
@@ -91,7 +93,7 @@ router.patch('/appointments/:id/status', verifyToken, (req, res) => {
           return res.status(500).json({ message: 'Failed to mark appointment as completed' });
         }
         return res.json({ message: 'Appointment marked as completed' });
-      });
+      }); 
     });
 
   } else {
@@ -171,6 +173,7 @@ router.patch('/appointments/:id/reschedule', verifyToken, (req, res) => {
 });
 
 // Get appointment history (cancelled or completed) for faculty
+// Get appointment history (cancelled, completed, or failed) for faculty
 router.get('/appointments/history', verifyToken, (req, res) => {
   const { id, userType } = req.user;
 
@@ -181,11 +184,13 @@ router.get('/appointments/history', verifyToken, (req, res) => {
   const query = `
     SELECT 
       a.appointment_id, a.date, a.time, a.duration, a.status,
-      a.meeting_mode, a.location, a.student_id, s.Name AS student_name,
-      a.cancelled_by, a.cancel_reason, a.reschedule_reason
+      a.meeting_mode, a.location, a.message,
+      a.cancelled_by, a.cancel_reason, a.reschedule_reason,
+      a.created_at, a.updated_at,
+      s.Name AS student_name
     FROM appointment a
     JOIN student s ON a.student_id = s.Student_id
-    WHERE a.faculty_id = ? AND a.status IN ('cancelled', 'completed')
+    WHERE a.faculty_id = ? AND a.status IN ('cancelled', 'completed', 'failed')
     ORDER BY a.date DESC, a.time DESC
   `;
 
@@ -195,6 +200,49 @@ router.get('/appointments/history', verifyToken, (req, res) => {
       return res.status(500).json({ message: 'Failed to fetch appointment history' });
     }
     res.json(results);
+  });
+});
+
+// PATCH /api/faculty/appointments/:id/fail
+router.patch('/appointments/:id/fail', verifyToken, (req, res) => {
+  const facultyId = req.user.id;
+  const { id } = req.params;
+  const { fail_reason } = req.body;
+
+  if (!fail_reason || fail_reason.trim() === '') {
+    return res.status(400).json({ message: 'Failure reason is required' });
+  }
+
+  const selectQuery = `SELECT status FROM appointment WHERE appointment_id = ? AND faculty_id = ?`;
+  db.query(selectQuery, [id, facultyId], (err, results) => {
+    if (err) {
+      console.error('Database select error:', err);
+      return res.status(500).json({ message: 'Database error' });
+    }
+
+    if (results.length === 0) {
+      return res.status(404).json({ message: 'Appointment not found' });
+    }
+
+    const appointmentStatus = results[0].status;
+    if (appointmentStatus !== 'accepted') {
+      return res.status(400).json({ message: 'Only accepted appointments can be marked as failed' });
+    }
+
+    const updateQuery = `
+      UPDATE appointment
+      SET status = 'failed', cancel_reason = ?, cancelled_by = 'faculty', updated_at = NOW()
+      WHERE appointment_id = ? AND faculty_id = ?
+    `;
+
+    db.query(updateQuery, [fail_reason, id, facultyId], (updateErr) => {
+      if (updateErr) {
+        console.error('Error updating to failed:', updateErr);
+        return res.status(500).json({ message: 'Failed to mark appointment as failed' });
+      }
+
+      return res.json({ message: 'Appointment marked as failed' });
+    });
   });
 });
 
