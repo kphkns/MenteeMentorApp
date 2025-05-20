@@ -64,6 +64,9 @@ app.use('/api/appointments', appointmentRoutes);
 const facultyAppointmentsRoutes = require('./routes/FacultyAppointments');
 app.use('/api/faculty', facultyAppointmentsRoutes);
 
+// const adminStudentStatusRoutes = require('./routes/AdminStudentStatus');
+// app.use('/admin', adminStudentStatusRoutes);
+
 // Start server
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);

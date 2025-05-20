@@ -34,13 +34,14 @@ router.get('/appointments', verifyToken, (req, res) => {
 });
 
 
-// Accept, cancel, or complete appointment by faculty (with cancel_reason if cancelled)
+// Accept, cancel, complete or fail appointment by faculty
 router.patch('/appointments/:id/status', verifyToken, (req, res) => {
   const appointmentId = req.params.id;
   const { status, cancel_reason } = req.body;
   const facultyId = req.user.id;
 
-  if (!['accepted', 'cancelled', 'completed'].includes(status)) {
+  // Add 'failed' to allowed statuses
+  if (!['accepted', 'cancelled', 'completed', 'failed'].includes(status)) {
     return res.status(400).json({ message: 'Invalid status' });
   }
 
@@ -93,31 +94,44 @@ router.patch('/appointments/:id/status', verifyToken, (req, res) => {
           return res.status(500).json({ message: 'Failed to mark appointment as completed' });
         }
         return res.json({ message: 'Appointment marked as completed' });
-      }); 
+      });
     });
-
-  } else {
-    // Accept or Cancel logic
+  } else if (status === 'failed') {
+    // Just mark as failed (no extra validation needed)
     const updateQuery = `
       UPDATE appointment
-      SET 
-        status = ?,
-        cancelled_by = IF(? = 'cancelled', 'faculty', NULL),
-        cancel_reason = IF(? = 'cancelled', ?, NULL),
-        updated_at = NOW()
+      SET status = 'failed', updated_at = NOW()
       WHERE appointment_id = ? AND faculty_id = ?
     `;
 
-    db.query(updateQuery, [status, status, status, cancel_reason, appointmentId, facultyId], (err, result) => {
-      if (err) {
-        console.error('Status update error:', err);
-        return res.status(500).json({ message: 'Status update failed' });
+    db.query(updateQuery, [appointmentId, facultyId], (updateErr) => {
+      if (updateErr) {
+        console.error('Failed to mark as failed:', updateErr);
+        return res.status(500).json({ message: 'Failed to mark appointment as failed' });
       }
-      if (result.affectedRows === 0) {
-        return res.status(404).json({ message: 'Appointment not found or not yours' });
-      }
+      return res.json({ message: 'Appointment marked as failed' });
+    });
+  } else {
+    // Accept or Cancel logic
+    let updateQuery = `
+      UPDATE appointment
+      SET status = ?, updated_at = NOW()
+    `;
+    const params = [status];
 
-      return res.json({ message: `Appointment ${status} successfully.` });
+    if (status === 'cancelled') {
+      updateQuery += `, cancel_reason = ?`;
+      params.push(cancel_reason);
+    }
+    updateQuery += ` WHERE appointment_id = ? AND faculty_id = ?`;
+    params.push(appointmentId, facultyId);
+
+    db.query(updateQuery, params, (err) => {
+      if (err) {
+        console.error(`Failed to update appointment status to ${status}:`, err);
+        return res.status(500).json({ message: `Failed to update appointment status to ${status}` });
+      }
+      return res.json({ message: `Appointment status updated to ${status}` });
     });
   }
 });

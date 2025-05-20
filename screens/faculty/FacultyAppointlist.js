@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet, Modal,
-  TextInput, Button, Alert, ActivityIndicator
+  TextInput, Alert, ActivityIndicator, RefreshControl
 } from 'react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -12,6 +12,7 @@ const API_URL = 'http://192.168.65.136:5000';
 export default function FacultyAppointlist() {
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [rescheduleModalVisible, setRescheduleModalVisible] = useState(false);
   const [rescheduleDate, setRescheduleDate] = useState(new Date());
@@ -27,20 +28,26 @@ export default function FacultyAppointlist() {
   }, []);
 
   const fetchAppointments = async () => {
-    setLoading(true);
     try {
       const token = await AsyncStorage.getItem('authToken');
       const res = await axios.get(`${API_URL}/api/faculty/appointments`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      // Filter only pending or accepted appointments to display in list
       const filtered = res.data.filter(app => app.status === 'pending' || app.status === 'accepted');
       setAppointments(filtered);
     } catch {
       Alert.alert('Error', 'Failed to fetch appointments');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchAppointments();
+  }, []);
 
   const confirmAccept = (id) => {
     Alert.alert('Confirmation', 'Accept this appointment?', [
@@ -110,6 +117,34 @@ export default function FacultyAppointlist() {
     }
   };
 
+  // New function for marking as failed
+  const markAsFailed = (appointment) => {
+    Alert.alert(
+      'Confirm',
+      'Mark this appointment as failed (student did not come)?',
+      [
+        { text: 'No' },
+        { 
+          text: 'Yes', 
+          onPress: async () => {
+            try {
+              const token = await AsyncStorage.getItem('authToken');
+              await axios.patch(`${API_URL}/api/faculty/appointments/${appointment.appointment_id}/status`, {
+                status: 'failed'
+              }, {
+                headers: { Authorization: `Bearer ${token}` },
+              });
+              fetchAppointments();
+            } catch (err) {
+              const message = err.response?.data?.message || 'Failed to mark as failed';
+              Alert.alert('Error', message);
+            }
+          } 
+        }
+      ]
+    );
+  };
+
   const openReschedule = (appointment) => {
     setSelectedAppointment(appointment);
     const date = new Date(appointment.date);
@@ -155,32 +190,32 @@ export default function FacultyAppointlist() {
 
   const renderItem = ({ item }) => (
     <View style={styles.card}>
-      <Text style={styles.boldText}>📅 {new Date(item.date).toDateString()} ⏰ {formatTime(item.time)}</Text>
-      <Text>👨‍🎓 Student: {item.student_name}</Text>
-      <Text>📍 Mode: {item.meeting_mode} | Location: {item.location}</Text>
-      <Text>Status: {item.status}</Text>
+      <Text style={styles.dateText}>📅 {new Date(item.date).toDateString()} ⏰ {formatTime(item.time)}</Text>
+      <Text style={styles.text}>👨‍🎓 Student: <Text style={styles.bold}>{item.student_name}</Text></Text>
+      <Text style={styles.text}>📍 Mode: {item.meeting_mode} | Location: {item.location}</Text>
+      <Text style={styles.text}>🟡 Status: <Text style={styles.status}>{item.status}</Text></Text>
 
       {item.status === 'pending' && (
         <View style={styles.btnRow}>
-          <TouchableOpacity style={styles.acceptBtn} onPress={() => confirmAccept(item.appointment_id)}>
+          <TouchableOpacity style={styles.btnSuccess} onPress={() => confirmAccept(item.appointment_id)}>
             <Text style={styles.btnText}>Accept</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.cancelBtn} onPress={() => openCancelModal(item)}>
+          <TouchableOpacity style={styles.btnDanger} onPress={() => openCancelModal(item)}>
             <Text style={styles.btnText}>Cancel</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.rescheduleBtn} onPress={() => openReschedule(item)}>
+          <TouchableOpacity style={styles.btnWarning} onPress={() => openReschedule(item)}>
             <Text style={styles.btnText}>Reschedule</Text>
           </TouchableOpacity>
         </View>
       )}
 
       {item.status === 'accepted' && (
-        <View style={styles.btnRow}>
-          <TouchableOpacity
-            style={[styles.acceptBtn, { backgroundColor: '#3b82f6' }]}
-            onPress={() => markAsCompleted(item)}
-          >
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 }}>
+          <TouchableOpacity style={[styles.btnPrimary, { flex: 1, marginRight: 6 }]} onPress={() => markAsCompleted(item)}>
             <Text style={styles.btnText}>Mark as Completed</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.btnDanger, { flex: 1, marginLeft: 6 }]} onPress={() => markAsFailed(item)}>
+            <Text style={styles.btnText}>Mark as Failed</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -190,14 +225,16 @@ export default function FacultyAppointlist() {
   return (
     <View style={styles.container}>
       <Text style={styles.header}>📖 Appointment Requests</Text>
+
       {loading ? (
-        <ActivityIndicator size="large" color="#007bff" />
+        <ActivityIndicator size="large" color="#007bff" style={{ marginTop: 30 }} />
       ) : (
         <FlatList
           data={appointments}
           keyExtractor={(item) => item.appointment_id.toString()}
           renderItem={renderItem}
-          ListEmptyComponent={<Text style={{ textAlign: 'center', marginTop: 20 }}>No appointments.</Text>}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          ListEmptyComponent={<Text style={styles.emptyText}>No appointments.</Text>}
         />
       )}
 
@@ -205,17 +242,21 @@ export default function FacultyAppointlist() {
       <Modal visible={cancelModalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Cancellation Reason</Text>
+            <Text style={styles.modalTitle}>Cancel Appointment</Text>
             <TextInput
               style={styles.input}
-              placeholder="Enter reason for cancellation"
+              placeholder="Enter reason"
               multiline
               value={cancelReason}
               onChangeText={setCancelReason}
             />
             <View style={styles.modalButtons}>
-              <Button title="Close" onPress={() => setCancelModalVisible(false)} />
-              <Button title="Submit" onPress={submitCancel} />
+              <TouchableOpacity style={styles.btnClose} onPress={() => setCancelModalVisible(false)}>
+                <Text style={styles.btnText}>Close</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.btnPrimary} onPress={submitCancel}>
+                <Text style={styles.btnText}>Submit</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -251,15 +292,19 @@ export default function FacultyAppointlist() {
 
             <TextInput
               style={styles.input}
-              placeholder="Reschedule Reason"
+              placeholder="Reason"
               multiline
               value={rescheduleReason}
               onChangeText={setRescheduleReason}
             />
 
             <View style={styles.modalButtons}>
-              <Button title="Close" onPress={() => setRescheduleModalVisible(false)} />
-              <Button title="Submit" onPress={submitReschedule} />
+              <TouchableOpacity style={styles.btnClose} onPress={() => setRescheduleModalVisible(false)}>
+                <Text style={styles.btnText}>Close</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.btnPrimary} onPress={submitReschedule}>
+                <Text style={styles.btnText}>Submit</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -268,20 +313,87 @@ export default function FacultyAppointlist() {
   );
 }
 
+// Styles for UI
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f0f4f8', padding: 16 },
-  header: { fontSize: 20, fontWeight: 'bold', marginBottom: 10, textAlign: 'center' },
-  card: { backgroundColor: '#fff', padding: 12, borderRadius: 8, marginBottom: 10, elevation: 2 },
-  boldText: { fontWeight: '700', marginBottom: 4 },
+  container: { flex: 1, padding: 12, backgroundColor: '#f2f6ff' },
+  header: { fontSize: 22, fontWeight: 'bold', marginBottom: 12, color: '#007bff' },
+  card: {
+    backgroundColor: '#fff',
+    marginVertical: 8,
+    padding: 16,
+    borderRadius: 8,
+    elevation: 3,
+  },
+  dateText: { fontSize: 14, marginBottom: 6, color: '#333' },
+  text: { fontSize: 16, marginVertical: 2, color: '#444' },
+  bold: { fontWeight: 'bold' },
+  status: { fontWeight: 'bold', color: '#d2691e' },
   btnRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
-  acceptBtn: { backgroundColor: '#10b981', padding: 10, borderRadius: 6 },
-  cancelBtn: { backgroundColor: '#ef4444', padding: 10, borderRadius: 6 },
-  rescheduleBtn: { backgroundColor: '#f59e0b', padding: 10, borderRadius: 6 },
-  btnText: { color: '#fff', fontWeight: '600' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
-  modalContainer: { backgroundColor: '#fff', borderRadius: 10, padding: 20 },
+  btnSuccess: {
+    flex: 1,
+    backgroundColor: 'green',
+    marginRight: 6,
+    paddingVertical: 10,
+    borderRadius: 5,
+  },
+  btnDanger: {
+    flex: 1,
+    backgroundColor: 'red',
+    marginLeft: 6,
+    paddingVertical: 10,
+    borderRadius: 5,
+  },
+  btnWarning: {
+    flex: 1,
+    backgroundColor: '#f0ad4e',
+    marginLeft: 6,
+    paddingVertical: 10,
+    borderRadius: 5,
+  },
+  btnPrimary: {
+    backgroundColor: '#007bff',
+    paddingVertical: 10,
+    borderRadius: 5,
+    alignItems: 'center',
+  },
+  btnText: { color: 'white', fontWeight: 'bold', textAlign: 'center' },
+  emptyText: { textAlign: 'center', marginTop: 50, fontSize: 16, color: '#666' },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  modalContainer: {
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 10,
+  },
   modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 10 },
-  selector: { padding: 12, backgroundColor: '#e2e8f0', borderRadius: 6, marginVertical: 6 },
-  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 6, padding: 10, height: 80, marginBottom: 10 },
-  modalButtons: { flexDirection: 'row', justifyContent: 'space-between' }
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 5,
+    padding: 10,
+    marginBottom: 12,
+    minHeight: 60,
+    textAlignVertical: 'top',
+  },
+  modalButtons: { flexDirection: 'row', justifyContent: 'space-between' },
+  btnClose: {
+    backgroundColor: '#888',
+    paddingVertical: 10,
+    borderRadius: 5,
+    flex: 1,
+    marginRight: 6,
+    alignItems: 'center',
+  },
+  selector: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    padding: 12,
+    borderRadius: 5,
+    marginBottom: 12,
+  },
 });

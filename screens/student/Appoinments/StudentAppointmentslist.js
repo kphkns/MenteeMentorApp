@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity,
   Alert, StyleSheet, ActivityIndicator, Modal,
-  TextInput, Button
+  TextInput, Button, ScrollView, RefreshControl
 } from 'react-native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -14,6 +14,7 @@ const API_URL = 'http://192.168.65.136:5000';
 export default function StudentAppointmentsScreen() {
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const [cancelModalVisible, setCancelModalVisible] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
@@ -35,7 +36,6 @@ export default function StudentAppointmentsScreen() {
   }, []);
 
   const fetchAppointments = async () => {
-    setLoading(true);
     try {
       const token = await AsyncStorage.getItem('authToken');
       const res = await axios.get(`${API_URL}/api/appointments/mine`, {
@@ -49,7 +49,13 @@ export default function StudentAppointmentsScreen() {
       Alert.alert('Error', 'Unable to load appointments.');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  };
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchAppointments();
   };
 
   const cancelAppointment = (appointment) => {
@@ -167,16 +173,20 @@ export default function StudentAppointmentsScreen() {
 
   const renderItem = ({ item }) => (
     <View style={styles.card}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+      <View style={styles.cardHeader}>
         <Text style={styles.dateText}>📅 {new Date(item.date).toDateString()} ⏰ {formatTime(item.time)}</Text>
         <TouchableOpacity onPress={() => showInfo(item)}>
           <Ionicons name="information-circle-outline" size={24} color="#2563eb" />
         </TouchableOpacity>
       </View>
-      <Text style={styles.text}>👨‍🏫 Mentor: {item.faculty_name}</Text>
+      <Text style={styles.text}>👨‍🏫 Mentor  : {item.faculty_name}</Text>
       <Text style={styles.text}>🕐 Duration: {item.duration} min</Text>
       <Text style={styles.text}>📍 Location: {item.meeting_mode} - {item.location}</Text>
-      <Text style={styles.status}>📌 Status: {item.status}</Text>
+      {/* <Text style={styles.status}>📌 Status: {item.status}</Text> */}
+      <Text style={[
+        styles.status,
+        item.status === 'pending' ? styles.pending : styles.accepted
+      ]}>📌 Status: {item.status.toUpperCase()}</Text>
 
       <View style={styles.actions}>
         <TouchableOpacity style={styles.cancelBtn} onPress={() => cancelAppointment(item)}>
@@ -206,7 +216,11 @@ export default function StudentAppointmentsScreen() {
         data={appointments}
         keyExtractor={(item) => String(item.appointment_id)}
         renderItem={renderItem}
-        ListEmptyComponent={<Text style={{ textAlign: 'center', marginTop: 20 }}>No appointments found.</Text>}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#2563eb']} />
+        }
+        ListEmptyComponent={<Text style={{ textAlign: 'center', marginTop: 20,   }}>No appointments found.</Text>}
+        contentContainerStyle={{ paddingBottom: 20 }}
       />
 
       {/* Cancel Modal */}
@@ -231,7 +245,7 @@ export default function StudentAppointmentsScreen() {
 
       {/* Reschedule Modal */}
       <Modal visible={rescheduleModalVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
+        <ScrollView contentContainerStyle={styles.modalOverlay}>
           <View style={styles.modalContainer}>
             <Text style={styles.modalTitle}>Reschedule</Text>
             <TouchableOpacity style={styles.selector} onPress={() => setShowDatePicker(true)}>
@@ -266,7 +280,7 @@ export default function StudentAppointmentsScreen() {
               <Button title="Submit" onPress={submitReschedule} />
             </View>
           </View>
-        </View>
+        </ScrollView>
       </Modal>
 
       {/* Info Modal */}
@@ -293,29 +307,32 @@ export default function StudentAppointmentsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: '#f9fafb' },
+  container: { flex: 1, padding: 16, backgroundColor: '#f2f6ff' },
   header: { fontSize: 22, fontWeight: 'bold', marginBottom: 12, textAlign: 'center', color: '#1e3a8a' },
   card: {
     backgroundColor: '#ffffff',
-    padding: 14,
-    marginBottom: 12,
+    padding: 16,
+    marginBottom: 14,
     borderRadius: 12,
     elevation: 3,
     borderWidth: 1,
     borderColor: '#e5e7eb',
   },
-  dateText: { fontWeight: 'bold', marginBottom: 6, color: '#1d4ed8', fontSize: 16 },
-  text: { marginBottom: 2 },
-  status: { marginTop: 4, fontWeight: '600' },
-  actions: { flexDirection: 'row', marginTop: 10, justifyContent: 'space-between' },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
+  dateText: { fontWeight: 'bold', color: '#1d4ed8', fontSize: 16 },
+  text: { marginBottom: 2, color: '#374151' },
+  status: { marginTop: 6, fontWeight: 'bold', fontSize: 14 },
+  pending: { color: '#f59e0b' },
+  accepted: { color: '#10b981' },
+  actions: { flexDirection: 'row', marginTop: 12, justifyContent: 'space-between' },
   cancelBtn: { backgroundColor: '#dc2626', paddingVertical: 10, paddingHorizontal: 14, borderRadius: 6 },
-  rescheduleBtn: { backgroundColor: '#facc15', paddingVertical: 10, paddingHorizontal: 14, borderRadius: 6 },
+  rescheduleBtn: { backgroundColor: '#fbbf24', paddingVertical: 10, paddingHorizontal: 14, borderRadius: 6 },
   btnText: { color: '#fff', fontWeight: 'bold' },
   loader: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
   modalContainer: { backgroundColor: '#fff', borderRadius: 10, padding: 20 },
   modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 10, textAlign: 'center' },
-  modalInput: { borderColor: '#ccc', borderWidth: 1, borderRadius: 6, padding: 10, marginBottom: 12, textAlignVertical: 'top' },
+  modalInput: { borderColor: '#ccc', borderWidth: 1, borderRadius: 6, padding: 10, marginBottom: 12, textAlignVertical: 'top', minHeight: 60 },
   modalButtons: { flexDirection: 'row', justifyContent: 'space-between' },
   selector: { padding: 12, backgroundColor: '#e2e8f0', borderRadius: 6, marginBottom: 10 },
 });

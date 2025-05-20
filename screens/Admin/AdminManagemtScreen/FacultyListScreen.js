@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, FlatList, ActivityIndicator,
-  Image, TextInput, TouchableOpacity, Modal, Alert, BackHandler, Animated
+  Image, TextInput, TouchableOpacity, Modal, Alert, BackHandler, Keyboard,
+  Animated, RefreshControl
 } from 'react-native';
 import axios from 'axios';
 import { Ionicons, FontAwesome } from '@expo/vector-icons';
@@ -16,13 +17,14 @@ export default function FacultyListScreen() {
   const [search, setSearch] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [editFaculty, setEditFaculty] = useState(null);
-
   const [editName, setEditName] = useState('');
   const [editEmail, setEditEmail] = useState('');
   const [editDept, setEditDept] = useState('');
-
   const [selectedIds, setSelectedIds] = useState([]);
-  const [fadeAnim] = useState(new Animated.Value(1)); // for smooth animation
+  const [refreshing, setRefreshing] = useState(false);
+
+  // For animated opacity per item, we'll keep a ref map:
+  const fadeAnimMap = useRef({});
 
   useEffect(() => {
     fetchFaculties();
@@ -63,6 +65,12 @@ export default function FacultyListScreen() {
     } catch {
       alert('Failed to fetch departments');
     }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchFaculties();
+    setRefreshing(false);
   };
 
   const openEditModal = (faculty) => {
@@ -111,9 +119,14 @@ export default function FacultyListScreen() {
   };
 
   const toggleSelect = (id) => {
+    // Initialize Animated.Value if not present
+    if (!fadeAnimMap.current[id]) {
+      fadeAnimMap.current[id] = new Animated.Value(1);
+    }
+
     Animated.sequence([
-      Animated.timing(fadeAnim, { toValue: 0.5, duration: 150, useNativeDriver: true }),
-      Animated.timing(fadeAnim, { toValue: 1, duration: 150, useNativeDriver: true }),
+      Animated.timing(fadeAnimMap.current[id], { toValue: 0.5, duration: 150, useNativeDriver: true }),
+      Animated.timing(fadeAnimMap.current[id], { toValue: 1, duration: 150, useNativeDriver: true }),
     ]).start();
 
     if (selectedIds.includes(id)) {
@@ -131,8 +144,12 @@ export default function FacultyListScreen() {
 
   const renderFacultyItem = ({ item }) => {
     const isSelected = selectedIds.includes(item.Faculty_id);
+    if (!fadeAnimMap.current[item.Faculty_id]) {
+      fadeAnimMap.current[item.Faculty_id] = new Animated.Value(1);
+    }
+
     return (
-      <Animated.View style={{ opacity: fadeAnim }}>
+      <Animated.View style={{ opacity: fadeAnimMap.current[item.Faculty_id], marginBottom: 12 }}>
         <TouchableOpacity
           onLongPress={() => toggleSelect(item.Faculty_id)}
           onPress={() => {
@@ -142,7 +159,7 @@ export default function FacultyListScreen() {
           }}
           style={[
             styles.itemContainer,
-            isSelected && { backgroundColor: '#cce5ff' }
+            isSelected && styles.selectedItem
           ]}
         >
           <Image
@@ -169,8 +186,12 @@ export default function FacultyListScreen() {
       <View style={styles.headerWrapper}>
         <Text style={styles.headerText}>Faculty List</Text>
         <TouchableOpacity
-          style={styles.addButton}
+          style={[
+            styles.actionButton,
+            selectedIds.length === 0 && styles.disabledButton
+          ]}
           onPress={selectedIds.length > 0 ? handleMultiDelete : () => {}}
+          disabled={selectedIds.length === 0}
         >
           <Ionicons name={selectedIds.length > 0 ? "trash" : "add"} size={24} color="#fff" />
           {selectedIds.length > 0 && (
@@ -187,6 +208,9 @@ export default function FacultyListScreen() {
           value={search}
           onChangeText={setSearch}
           style={styles.searchInput}
+          returnKeyType="search"
+          onSubmitEditing={Keyboard.dismiss}
+          clearButtonMode="while-editing"
         />
       </View>
 
@@ -199,6 +223,9 @@ export default function FacultyListScreen() {
           renderItem={renderFacultyItem}
           keyExtractor={(item) => item.Faculty_id.toString()}
           contentContainerStyle={{ paddingBottom: 100 }}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#007bff" />
+          }
         />
       )}
 
@@ -220,6 +247,7 @@ export default function FacultyListScreen() {
               onChangeText={setEditEmail}
               style={styles.input}
               keyboardType="email-address"
+              autoCapitalize="none"
             />
             <Picker
               selectedValue={editDept}
@@ -265,23 +293,39 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   headerText: { fontSize: 26, fontWeight: '700', color: '#222' },
-  addButton: {
+  actionButton: {
     backgroundColor: '#007bff', flexDirection: 'row',
     alignItems: 'center', justifyContent: 'center',
     paddingHorizontal: 14, height: 36, borderRadius: 18,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1,
+  },
+  disabledButton: {
+    backgroundColor: '#a0c4ff',
   },
   selectedCount: { color: '#fff', fontWeight: '600', marginLeft: 6 },
   searchWrapper: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: '#fff', borderRadius: 12, paddingHorizontal: 12,
     paddingVertical: 8, marginBottom: 16,
+    elevation: 1,
   },
   searchIcon: { marginRight: 8 },
-  searchInput: { flex: 1 },
+  searchInput: { flex: 1, fontSize: 16, paddingVertical: 4 },
   itemContainer: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: '#fff', borderRadius: 12, padding: 12,
-    marginBottom: 12, elevation: 1,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 1,
+  },
+  selectedItem: {
+    backgroundColor: '#cce5ff',
   },
   avatar: {
     width: 48, height: 48, borderRadius: 24, marginRight: 12,
@@ -296,7 +340,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center'
   },
   modalContent: {
-    width: '90%', backgroundColor: '#fff', borderRadius: 12, padding: 20
+    width: '90%', backgroundColor: '#fff', borderRadius: 12, padding: 20,
+    elevation: 5,
   },
   modalTitle: {
     fontSize: 18, fontWeight: '600', color: '#007bff',
@@ -304,11 +349,12 @@ const styles = StyleSheet.create({
   },
   input: {
     backgroundColor: '#f1f1f1', padding: 10, borderRadius: 8,
-    marginBottom: 12, borderColor: '#ccc', borderWidth: 1
+    marginBottom: 12, borderColor: '#ccc', borderWidth: 1,
+    fontSize: 16,
   },
   picker: {
     backgroundColor: '#f1f1f1', borderRadius: 8,
-    marginBottom: 12, height: 50
+    marginBottom: 12, height: 50,
   },
   modalActions: {
     flexDirection: 'row', justifyContent: 'space-between', marginTop: 10

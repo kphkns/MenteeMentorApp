@@ -275,7 +275,7 @@ const LabelValue = ({ label, value }) => (
 const styles = StyleSheet.create({
   container: {
     padding: 15,
-    backgroundColor: "#f9f9f9",
+    backgroundColor: "#f2f6ff",
   },
   headerBox: {
     marginBottom: 20,

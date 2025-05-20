@@ -1,7 +1,8 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  FlatList, Alert, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, BackHandler, Modal
+  FlatList, Alert, StyleSheet, ActivityIndicator,
+  KeyboardAvoidingView, Platform, BackHandler, Modal, RefreshControl
 } from 'react-native';
 import axios from 'axios';
 import { Ionicons, Feather } from '@expo/vector-icons';
@@ -14,6 +15,7 @@ export default function AddBatchesScreen() {
   const [search, setSearch] = useState('');
   const [editingBatch, setEditingBatch] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedBatches, setSelectedBatches] = useState([]);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -38,7 +40,6 @@ export default function AddBatchesScreen() {
   }, [isSelectionMode]);
 
   const fetchBatches = async () => {
-    setLoading(true);
     try {
       const res = await axios.get(`${SERVER_URL}/admin/batches`);
       setBatches(res.data);
@@ -46,7 +47,13 @@ export default function AddBatchesScreen() {
       Alert.alert('Error', 'Failed to fetch batches');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  };
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchBatches();
   };
 
   const handleAddOrUpdate = async () => {
@@ -117,20 +124,20 @@ export default function AddBatchesScreen() {
           toggleSelect(item.Batch_id);
         }}
         onPress={() => {
-          if (isSelectionMode) {
-            toggleSelect(item.Batch_id);
-          }
+          if (isSelectionMode) toggleSelect(item.Batch_id);
         }}
-        style={[styles.card, isSelected && { backgroundColor: '#e0f0ff' }]}
+        style={[styles.card, isSelected && styles.selectedCard]}
       >
         <Text style={styles.cardTitle}>{item.batch_name}</Text>
         {!isSelectionMode && (
-          <TouchableOpacity onPress={() => {
-            setBatchName(item.batch_name);
-            setEditingBatch(item);
-            setModalVisible(true);
-          }}>
-            <Feather name="edit" size={20} color="#4e73df" />
+          <TouchableOpacity
+            style={styles.editBtn}
+            onPress={() => {
+              setBatchName(item.batch_name);
+              setEditingBatch(item);
+              setModalVisible(true);
+            }}>
+            <Feather name="edit-3" size={18} color="#4e73df" />
           </TouchableOpacity>
         )}
       </TouchableOpacity>
@@ -138,7 +145,7 @@ export default function AddBatchesScreen() {
   };
 
   return (
-    <KeyboardAvoidingView style={styles.wrapper} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.wrapper}>
       <View style={styles.container}>
         <View style={styles.headerRow}>
           <Text style={styles.header}>Batches</Text>
@@ -157,8 +164,8 @@ export default function AddBatchesScreen() {
         </View>
 
         <TextInput
-          placeholder="Search Batches..."
-          placeholderTextColor="#aaa"
+          placeholder="Search batches..."
+          placeholderTextColor="#888"
           value={search}
           onChangeText={setSearch}
           style={styles.searchInput}
@@ -174,21 +181,25 @@ export default function AddBatchesScreen() {
             data={filteredBatches}
             keyExtractor={(item) => item.Batch_id.toString()}
             renderItem={renderItem}
-            scrollEnabled={false}
-            contentContainerStyle={{ paddingBottom: 40 }}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+            contentContainerStyle={{ paddingBottom: 60 }}
           />
         )}
 
-        <Modal visible={modalVisible} animationType="slide" transparent>
+        {/* Modal */}
+        <Modal visible={modalVisible} animationType="fade" transparent>
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>{editingBatch ? `Editing: ${editingBatch.batch_name}` : 'Add Batch'}</Text>
+              <Text style={styles.modalTitle}>
+                {editingBatch ? `Edit: ${editingBatch.batch_name}` : 'Add Batch'}
+              </Text>
               <TextInput
-                placeholder="Batch Year"
+                placeholder="Enter batch year"
                 value={batchName}
                 onChangeText={setBatchName}
                 style={styles.input}
                 keyboardType="numeric"
+                maxLength={4}
               />
               <View style={styles.modalActions}>
                 <TouchableOpacity style={styles.saveBtn} onPress={handleAddOrUpdate}>
@@ -213,25 +224,61 @@ export default function AddBatchesScreen() {
 }
 
 const styles = StyleSheet.create({
-  wrapper: { flex: 1, backgroundColor: '#e6f3ff' },
+  wrapper: { flex: 1, backgroundColor: '#f2f6fc' },
   container: { padding: 20 },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  header: { fontSize: 22, fontWeight: '700', color: '#4e73df' },
-  addBtn: { backgroundColor: '#4e73df', padding: 10, borderRadius: 30, alignItems: 'center', justifyContent: 'center' },
-  deleteBtn: { backgroundColor: '#e74a3b', padding: 10, borderRadius: 30, alignItems: 'center', justifyContent: 'center' },
-  selectedCount: { color: '#e74a3b', fontWeight: '600', fontSize: 16, marginRight: 10 },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  header: { fontSize: 24, fontWeight: 'bold', color: '#4e73df' },
+  addBtn: {
+    backgroundColor: '#4e73df', padding: 10, borderRadius: 30,
+    alignItems: 'center', justifyContent: 'center'
+  },
+  deleteBtn: {
+    backgroundColor: '#e74a3b', padding: 10, borderRadius: 30,
+    alignItems: 'center', justifyContent: 'center'
+  },
   selectionHeader: { flexDirection: 'row', alignItems: 'center' },
-  searchInput: { backgroundColor: '#fff', padding: 10, borderRadius: 10, borderColor: '#ccc', borderWidth: 1, marginBottom: 16 },
-  input: { backgroundColor: '#f9f9f9', padding: 10, borderRadius: 8, borderColor: '#ccc', borderWidth: 1, marginBottom: 15 },
-  card: { backgroundColor: '#fff', padding: 15, borderRadius: 12, marginBottom: 12, borderColor: '#d1d3e2', borderWidth: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', elevation: 2 },
-  cardTitle: { fontSize: 16, fontWeight: '600', color: '#343a40' },
-  emptyMessage: { textAlign: 'center', color: '#6c757d', fontSize: 16, marginTop: 20 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' },
-  modalContent: { width: '90%', backgroundColor: '#fff', borderRadius: 10, padding: 20 },
-  modalTitle: { fontSize: 18, fontWeight: '600', marginBottom: 15, color: '#4e73df' },
-  modalActions: { flexDirection: 'row', justifyContent: 'space-between' },
-  saveBtn: { backgroundColor: '#4e73df', padding: 10, borderRadius: 8, flex: 1, alignItems: 'center', marginRight: 10 },
-  saveText: { color: '#fff', fontWeight: '600' },
-  cancelBtn: { backgroundColor: '#f0f0f0', padding: 10, borderRadius: 8, flex: 1, alignItems: 'center' },
-  cancelText: { color: '#666', fontWeight: '600' }
+  selectedCount: { marginRight: 10, fontWeight: '600', color: '#e74a3b', fontSize: 16 },
+  searchInput: {
+    backgroundColor: '#fff', padding: 12, borderRadius: 10,
+    borderWidth: 1, borderColor: '#ced4da', marginBottom: 16
+  },
+  card: {
+    backgroundColor: '#fff', borderRadius: 12, padding: 15, marginBottom: 12,
+    borderWidth: 1, borderColor: '#dee2e6', flexDirection: 'row', justifyContent: 'space-between',
+    alignItems: 'center', elevation: 2
+  },
+  selectedCard: {
+    backgroundColor: '#dbeafe', borderColor: '#60a5fa'
+  },
+  cardTitle: { fontSize: 16, fontWeight: '600', color: '#2c3e50' },
+  editBtn: { padding: 6, borderRadius: 8 },
+  emptyMessage: { textAlign: 'center', color: '#999', fontSize: 16, marginTop: 40 },
+  modalOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center', alignItems: 'center'
+  },
+  modalContent: {
+    width: '90%', backgroundColor: '#fff',
+    borderRadius: 12, padding: 20
+  },
+  modalTitle: {
+    fontSize: 18, fontWeight: 'bold', color: '#4e73df', marginBottom: 15
+  },
+  input: {
+    backgroundColor: '#f9f9f9', padding: 10, borderRadius: 10,
+    borderWidth: 1, borderColor: '#ccc', marginBottom: 15
+  },
+  modalActions: {
+    flexDirection: 'row', justifyContent: 'space-between'
+  },
+  saveBtn: {
+    backgroundColor: '#4e73df', padding: 10, borderRadius: 10,
+    flex: 1, alignItems: 'center', marginRight: 10
+  },
+  saveText: { color: '#fff', fontWeight: 'bold' },
+  cancelBtn: {
+    backgroundColor: '#f0f0f0', padding: 10, borderRadius: 10,
+    flex: 1, alignItems: 'center'
+  },
+  cancelText: { color: '#333', fontWeight: '600' }
 });

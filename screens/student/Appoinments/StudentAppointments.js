@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, TextInput, Alert, ScrollView,
-  TouchableOpacity, StyleSheet, Platform
+  View, Text, TextInput, Alert, TouchableOpacity,
+  StyleSheet, Platform
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { Picker } from '@react-native-picker/picker';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 
 export default function StudentAppointmentScreen({ navigation }) {
   const [studentId, setStudentId] = useState(null);
@@ -23,25 +24,32 @@ export default function StudentAppointmentScreen({ navigation }) {
   const API_URL = 'http://192.168.65.136:5000';
 
   useEffect(() => {
-    (async () => {
-      const token = await AsyncStorage.getItem('authToken');
-      if (!token) return;
+    const init = async () => {
+      try {
+        const token = await AsyncStorage.getItem('authToken');
+        if (!token) return;
 
-      const res = await axios.get(`${API_URL}/api/appointments/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setStudentId(res.data.studentId);
-      setFacultyId(res.data.facultyId);
+        const res = await axios.get(`${API_URL}/api/appointments/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
 
-      const appointments = await axios.get(`${API_URL}/api/appointments/mine`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+        setStudentId(res.data.studentId);
+        setFacultyId(res.data.facultyId);
 
-      const hasActive = appointments.data.some(app =>
-        ['pending', 'accepted'].includes(app.status)
-      );
-      setHasActiveAppointment(hasActive);
-    })();
+        const appointments = await axios.get(`${API_URL}/api/appointments/mine`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const hasActive = appointments.data.some(app =>
+          ['pending', 'accepted'].includes(app.status)
+        );
+        setHasActiveAppointment(hasActive);
+      } catch (error) {
+        Alert.alert('Error', 'Failed to fetch user data or appointments.');
+      }
+    };
+
+    init();
   }, []);
 
   const handleDateChange = (selected) => {
@@ -60,37 +68,45 @@ export default function StudentAppointmentScreen({ navigation }) {
     return dateObj.toLocaleTimeString([], {
       hour: '2-digit',
       minute: '2-digit',
-      hour12: true
+      hour12: true,
     });
   };
 
   const onBookAppointment = async () => {
     const now = new Date();
+
+    if (!facultyId || !studentId) {
+      Alert.alert('Error', 'Student or faculty not found.');
+      return;
+    }
+
     if (date < now) {
       Alert.alert('Invalid Time', 'You cannot select a past date or time.');
       return;
     }
 
-    if (hasActiveAppointment) {
-      Alert.alert('Limit Reached', 'You already have an active appointment. Please cancel or wait until it is completed.');
+    if (!duration || isNaN(duration) || parseInt(duration) <= 0) {
+      Alert.alert('Invalid Duration', 'Please enter a valid duration.');
       return;
     }
 
-    if (!facultyId || !duration || (meetingMode === 'online' && !location)) {
-      Alert.alert('Validation Error', 'Please complete all required fields.');
+    if (hasActiveAppointment) {
+      Alert.alert(
+        'Limit Reached',
+        'You already have an active appointment. Please cancel or wait until it is completed.'
+      );
+      return;
+    }
+
+    if (meetingMode === 'online' && !location.trim()) {
+      Alert.alert('Missing Link', 'Please provide an online meeting link.');
       return;
     }
 
     try {
       const token = await AsyncStorage.getItem('authToken');
-
-      const formattedDate = date.getFullYear() + '-' +
-        String(date.getMonth() + 1).padStart(2, '0') + '-' +
-        String(date.getDate()).padStart(2, '0');
-
-      const hours = date.getHours().toString().padStart(2, '0');
-      const minutes = date.getMinutes().toString().padStart(2, '0');
-      const formattedTime = `${hours}:${minutes}:00`;
+      const formattedDate = date.toISOString().split('T')[0];
+      const formattedTime = date.toTimeString().split(' ')[0];
 
       const payload = {
         faculty_id: facultyId,
@@ -99,7 +115,7 @@ export default function StudentAppointmentScreen({ navigation }) {
         duration: parseInt(duration),
         meeting_mode: meetingMode,
         location: meetingMode === 'online' ? location : 'Office Room',
-        message,
+        message: message.trim(),
       };
 
       await axios.post(`${API_URL}/api/appointments`, payload, {
@@ -110,24 +126,29 @@ export default function StudentAppointmentScreen({ navigation }) {
       navigation.goBack();
     } catch (err) {
       const status = err.response?.status;
-      const message = err.response?.data?.message || 'Booking failed. Please try again.';
+      const msg = err.response?.data?.message || 'Booking failed. Please try again.';
 
       if (status === 409) {
-        Alert.alert('⏰ Slot Unavailable', message);
+        Alert.alert('⏰ Slot Unavailable', msg);
       } else {
-        Alert.alert('Error', message);
+        Alert.alert('Error', msg);
       }
     }
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.heading}>📅 Book an Appointment</Text>
-
+    <KeyboardAwareScrollView
+      contentContainerStyle={styles.container}
+      enableOnAndroid
+      extraScrollHeight={100}
+      keyboardShouldPersistTaps="handled"
+    >
+      <Text style={styles.heading}>📅 Book Appointment</Text>
       <View style={styles.card}>
-        <Text style={styles.label}>Select Date</Text>
+        {/* Date */}
+        <Text style={styles.label}>Date</Text>
         <TouchableOpacity style={styles.selector} onPress={() => setShowDatePicker(true)}>
-          <Text>{date.toDateString()}</Text>
+          <Text style={styles.selectorText}>{date.toDateString()}</Text>
         </TouchableOpacity>
         <DateTimePickerModal
           isVisible={showDatePicker}
@@ -138,9 +159,10 @@ export default function StudentAppointmentScreen({ navigation }) {
           onCancel={() => setShowDatePicker(false)}
         />
 
-        <Text style={styles.label}>Select Time</Text>
+        {/* Time */}
+        <Text style={styles.label}>Time</Text>
         <TouchableOpacity style={styles.selector} onPress={() => setShowTimePicker(true)}>
-          <Text>{formatTime12Hour(date)}</Text>
+          <Text style={styles.selectorText}>{formatTime12Hour(date)}</Text>
         </TouchableOpacity>
         <DateTimePickerModal
           isVisible={showTimePicker}
@@ -150,6 +172,7 @@ export default function StudentAppointmentScreen({ navigation }) {
           onCancel={() => setShowTimePicker(false)}
         />
 
+        {/* Duration */}
         <Text style={styles.label}>Duration (minutes)</Text>
         <TextInput
           style={styles.input}
@@ -159,14 +182,16 @@ export default function StudentAppointmentScreen({ navigation }) {
           placeholder="e.g. 30"
         />
 
+        {/* Meeting Mode */}
         <Text style={styles.label}>Meeting Mode</Text>
         <View style={styles.pickerWrapper}>
-          <Picker selectedValue={meetingMode} onValueChange={setMeetingMode} mode="dropdown">
+          <Picker selectedValue={meetingMode} onValueChange={setMeetingMode}>
             <Picker.Item label="Online" value="online" />
             <Picker.Item label="Offline (Office Room)" value="offline" />
           </Picker>
         </View>
 
+        {/* Location */}
         {meetingMode === 'online' && (
           <>
             <Text style={styles.label}>Zoom/Meet Link</Text>
@@ -174,102 +199,110 @@ export default function StudentAppointmentScreen({ navigation }) {
               style={styles.input}
               value={location}
               onChangeText={setLocation}
-              placeholder="Enter video call link"
+              placeholder="Enter meeting link"
             />
           </>
         )}
 
+        {/* Message */}
         <Text style={styles.label}>Message (optional)</Text>
         <TextInput
           style={styles.textarea}
           value={message}
           onChangeText={setMessage}
           multiline
-          placeholder="Add any details for the mentor..."
+          placeholder="Write a note for the mentor..."
         />
 
         <TouchableOpacity style={styles.button} onPress={onBookAppointment}>
           <Text style={styles.buttonText}>📌 Confirm Booking</Text>
         </TouchableOpacity>
       </View>
-    </ScrollView>
+    </KeyboardAwareScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     padding: 20,
-    paddingBottom: 60,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: '#f2f6ff',
+    paddingBottom: 40,
   },
   heading: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: '700',
-    color: '#1e293b',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
+    color: '#1e293b',
   },
   card: {
     backgroundColor: '#ffffff',
-    padding: 18,
-    borderRadius: 12,
+    padding: 20,
+    borderRadius: 16,
     shadowColor: '#000',
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 4 },
     shadowRadius: 10,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 3,
+    elevation: 5,
   },
   label: {
-    marginTop: 12,
     fontWeight: '600',
     color: '#334155',
     marginBottom: 6,
+    marginTop: 16,
+    fontSize: 16,
   },
   selector: {
     backgroundColor: '#f8fafc',
-    padding: 12,
-    borderRadius: 8,
+    padding: 14,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: '#cbd5e1',
   },
+  selectorText: {
+    fontSize: 16,
+    color: '#0f172a',
+  },
   input: {
-    backgroundColor: '#fff',
+    backgroundColor: '#ffffff',
     borderWidth: 1,
     borderColor: '#cbd5e1',
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: Platform.OS === 'ios' ? 12 : 8,
-    borderRadius: 8,
+    borderRadius: 10,
+    fontSize: 16,
   },
   pickerWrapper: {
     borderWidth: 1,
     borderColor: '#cbd5e1',
-    borderRadius: 8,
+    borderRadius: 10,
     overflow: 'hidden',
   },
   textarea: {
-    backgroundColor: '#fff',
+    backgroundColor: '#ffffff',
     borderWidth: 1,
     borderColor: '#cbd5e1',
-    padding: 12,
-    borderRadius: 8,
+    padding: 14,
+    borderRadius: 10,
     textAlignVertical: 'top',
-    minHeight: 80,
+    minHeight: 100,
+    fontSize: 16,
   },
   button: {
     backgroundColor: '#2563eb',
-    marginTop: 20,
-    paddingVertical: 14,
-    borderRadius: 10,
+    marginTop: 24,
+    paddingVertical: 16,
+    borderRadius: 12,
     alignItems: 'center',
     shadowColor: '#2563eb',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 6,
-    elevation: 3,
+    elevation: 5,
   },
   buttonText: {
-    color: '#fff',
-    fontSize: 16,
+    color: '#ffffff',
+    fontSize: 18,
     fontWeight: '700',
   },
 });

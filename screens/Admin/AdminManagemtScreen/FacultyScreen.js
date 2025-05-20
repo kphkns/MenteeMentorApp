@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import axios from 'axios';
 import RNPickerSelect from 'react-native-picker-select';
+import Icon from 'react-native-vector-icons/Ionicons';
 
 const SERVER_URL = 'http://192.168.65.136:5000'; // Replace with your server IP
 
@@ -93,32 +94,45 @@ export default function FacultyScreen({ navigation }) {
           <Text style={styles.title}>👨‍🏫 Add Faculty</Text>
           <Text style={styles.subtitle}>Fill the details below carefully</Text>
 
+          {/* Name Input */}
           <Text style={styles.label}>Name</Text>
-          <TextInput
-            placeholder="Enter faculty name"
-            value={facultyName}
-            onChangeText={setFacultyName}
-            style={styles.input}
-          />
+          <View style={styles.inputWrapper}>
+            <Icon name="person-outline" size={20} color="#6c757d" style={styles.icon} />
+            <TextInput
+              placeholder="Enter faculty name"
+              value={facultyName}
+              onChangeText={setFacultyName}
+              style={styles.input}
+            />
+          </View>
 
+          {/* Email Input */}
           <Text style={styles.label}>Email</Text>
-          <TextInput
-            placeholder="Enter email"
-            value={facultyEmail}
-            onChangeText={setFacultyEmail}
-            style={styles.input}
-            keyboardType="email-address"
-          />
+          <View style={styles.inputWrapper}>
+            <Icon name="mail-outline" size={20} color="#6c757d" style={styles.icon} />
+            <TextInput
+              placeholder="Enter email"
+              value={facultyEmail}
+              onChangeText={setFacultyEmail}
+              style={styles.input}
+              keyboardType="email-address"
+            />
+          </View>
 
+          {/* Password Input */}
           <Text style={styles.label}>Password</Text>
-          <TextInput
-            placeholder="Enter password"
-            value={facultyPassword}
-            onChangeText={setFacultyPassword}
-            style={styles.input}
-            secureTextEntry
-          />
+          <View style={styles.inputWrapper}>
+            <Icon name="lock-closed-outline" size={20} color="#6c757d" style={styles.icon} />
+            <TextInput
+              placeholder="Enter password"
+              value={facultyPassword}
+              onChangeText={setFacultyPassword}
+              style={styles.input}
+              secureTextEntry
+            />
+          </View>
 
+          {/* Department Picker */}
           <Text style={styles.label}>Department</Text>
           <View style={styles.pickerWrapper}>
             <RNPickerSelect
@@ -131,17 +145,30 @@ export default function FacultyScreen({ navigation }) {
                 placeholder: { color: '#6c757d' },
               }}
               value={selectedDept}
+              useNativeAndroidPickerStyle={false}
+              Icon={() => <Icon name="chevron-down-outline" size={20} color="#6c757d" />}
             />
           </View>
+          {selectedDept && (
+            <Text style={styles.selectedDeptText}>
+              Selected: {departments.find(d => d.Dept_id === selectedDept)?.Dept_name}
+            </Text>
+          )}
 
+          {/* Submit Button */}
           <TouchableOpacity
-            style={[styles.button, submitting && { backgroundColor: '#6c757d' }]}
+            style={[styles.button, submitting && styles.buttonDisabled]}
             onPress={handleAddFaculty}
             disabled={submitting}
           >
-            <Text style={styles.buttonText}>{submitting ? 'Submitting...' : 'Add Faculty'}</Text>
+            {submitting ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>Add Faculty</Text>
+            )}
           </TouchableOpacity>
 
+          {/* Navigate to Faculty List */}
           <TouchableOpacity
             style={styles.secondaryButton}
             onPress={() => navigation.navigate('FacultyListScreen')}
@@ -193,28 +220,44 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     marginTop: 12,
   },
-  input: {
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#f8f9fa',
     borderColor: '#ced4da',
     borderWidth: 1,
     borderRadius: 10,
-    padding: 12,
+    paddingHorizontal: 10,
+    marginBottom: 12,
+  },
+  icon: {
+    marginRight: 8,
+  },
+  input: {
+    flex: 1,
+    paddingVertical: 12,
     fontSize: 16,
-    marginBottom: 5,
+    color: '#212529',
   },
   pickerWrapper: {
     backgroundColor: '#f8f9fa',
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#ced4da',
-    marginBottom: 15,
+    marginBottom: 8,
     marginTop: 4,
+    paddingHorizontal: 10,
   },
   picker: {
     paddingVertical: 12,
-    paddingHorizontal: 10,
-    color: '#212529',
     fontSize: 16,
+    color: '#212529',
+  },
+  selectedDeptText: {
+    fontSize: 14,
+    fontStyle: 'italic',
+    color: '#495057',
+    marginBottom: 10,
   },
   button: {
     backgroundColor: '#007bff',
@@ -222,6 +265,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     marginTop: 20,
+  },
+  buttonDisabled: {
+    backgroundColor: '#6c757d',
   },
   buttonText: {
     color: '#ffffff',

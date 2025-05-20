@@ -39,55 +39,69 @@ router.post('/', verifyToken, (req, res) => {
     return res.status(400).json({ message: 'Cannot book past date or time.' });
   }
 
-  // One active appointment check
-  const activeCheck = `
-    SELECT * FROM appointment
-    WHERE student_id = ? AND status IN ('pending', 'accepted')
-  `;
+  // ✅ Check student status before proceeding
+  const statusCheckQuery = `SELECT status FROM student WHERE Student_id = ?`;
+  db.query(statusCheckQuery, [student_id], (err, result) => {
+    if (err) return res.status(500).json({ message: 'Server error (status check)' });
+    if (result.length === 0) return res.status(404).json({ message: 'Student not found.' });
 
-  db.query(activeCheck, [student_id], (err, activeAppointments) => {
-    if (err) return res.status(500).json({ message: 'Server error' });
-    if (activeAppointments.length > 0) {
-      return res.status(403).json({ message: 'You already have an active appointment.' });
+    const studentStatus = result[0].status;
+    if (studentStatus === 0) {
+      return res.status(403).json({ message: 'Inactive student accounts cannot book appointments.' });
     }
 
-    // Conflict check: exclude student's own cancelled appointment
-    const conflictQuery = `
+    // ✅ One active appointment check
+    const activeCheck = `
       SELECT * FROM appointment
-      WHERE faculty_id = ?
-        AND date = ?
-        AND NOT (student_id = ? AND status = 'cancelled')
-        AND (
-          TIME(?) < ADDTIME(time, SEC_TO_TIME(duration * 60))
-          AND TIME(?) >= time
-        )
+      WHERE student_id = ? AND status IN ('pending', 'accepted')
     `;
 
-    db.query(conflictQuery, [faculty_id, date, student_id, time, time], (err2, conflicts) => {
-      if (err2) return res.status(500).json({ message: 'Conflict check failed' });
-
-      if (conflicts.length > 0) {
-        return res.status(409).json({ message: 'This time slot is already booked with your mentor.' });
+    db.query(activeCheck, [student_id], (err, activeAppointments) => {
+      if (err) return res.status(500).json({ message: 'Server error (active check)' });
+      if (activeAppointments.length > 0) {
+        return res.status(403).json({ message: 'You already have an active appointment.' });
       }
 
-      const insertQuery = `
-        INSERT INTO appointment (
-          faculty_id, student_id, date, time, duration, meeting_mode,
-          location, status, message, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, NOW(), NOW())
+      // ✅ Conflict check
+      const conflictQuery = `
+        SELECT * FROM appointment
+        WHERE faculty_id = ?
+          AND date = ?
+          AND status NOT IN ('failed')
+          AND NOT (student_id = ? AND status = 'cancelled')
+          AND (
+            TIME(?) < ADDTIME(time, SEC_TO_TIME(duration * 60))
+            AND TIME(?) >= time
+          )
       `;
 
-      db.query(insertQuery, [
-        faculty_id, student_id, date, time, duration, meeting_mode, location, message
-      ], (err3, result) => {
-        if (err3) {
-          console.error('Insert error:', err3);
-          return res.status(500).json({ message: 'Error creating appointment' });
+      db.query(conflictQuery, [faculty_id, date, student_id, time, time], (err2, conflicts) => {
+        if (err2) return res.status(500).json({ message: 'Conflict check failed' });
+
+        if (conflicts.length > 0) {
+          return res.status(409).json({ message: 'This time slot is already booked with your mentor.' });
         }
 
-        res.status(201).json({
-          message: 'Appointment created successfully',
-          appointment_id: result.insertId
+        // ✅ Insert appointment
+        const insertQuery = `
+          INSERT INTO appointment (
+            faculty_id, student_id, date, time, duration, meeting_mode,
+            location, status, message, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, NOW(), NOW())
+        `;
+
+        db.query(insertQuery, [
+          faculty_id, student_id, date, time, duration, meeting_mode, location, message
+        ], (err3, result) => {
+          if (err3) {
+            console.error('Insert error:', err3);
+            return res.status(500).json({ message: 'Error creating appointment' });
+          }
+
+          res.status(201).json({
+            message: 'Appointment created successfully',
+            appointment_id: result.insertId
+          });
         });
       });
     });

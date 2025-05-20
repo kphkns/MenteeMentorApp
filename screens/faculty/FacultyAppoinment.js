@@ -10,40 +10,44 @@ import {
 const academicItems = [
   {
     id: '1',
-    name: 'Book Appointment',
-    icon: <Ionicons name="person-outline" size={24} color="#0057ff" />
+    name: 'Appoinment Requests',
+    icon: <Ionicons name="calendar-outline" size={26} color="#007bff" />
   },
   {
     id: '2',
-    name: 'Appointments Status',
-    icon: <MaterialCommunityIcons name="account-circle-outline" size={24} color="#7b61ff" />
+    name: 'Appointment History',
+    icon: <MaterialCommunityIcons name="history" size={26} color="#7b61ff" />
   },
-//    {
-//     id: '3',
-//     name: 'Appointment History',
-//     icon: <MaterialCommunityIcons name="account-circle-outline" size={24} color="#7b61ff" />
-//   }
+  // {
+  //   id: '3',
+  //   name: 'Appointment History',
+  //   icon: <MaterialCommunityIcons name="history" size={24} color="#ff8c00" />
+  // }
 ];
 
 export default function AcademicThings({ navigation }) {
   const handleSelect = (item) => {
     switch (item.id) {
       case '1':
-        navigation.navigate('FacultyAppointlist'); // screen name for booking
+        navigation.navigate('FacultyAppointlist');
         break;
       case '2':
-        navigation.navigate('FacultyHistoryScreen'); // screen name for appointments list
+        navigation.navigate('FacultyHistoryScreen');
         break;
-    //      case '3':
-    //     navigation.navigate('AppointmentHistory'); // screen name for appointments list
-    //     break;
+      // case '3':
+      //   navigation.navigate('AppointmentHistory');
+      //   break;
       default:
         console.log(`Unhandled item: ${item.name}`);
     }
   };
 
   const renderItem = ({ item }) => (
-    <TouchableOpacity style={styles.itemContainer} onPress={() => handleSelect(item)}>
+    <TouchableOpacity
+      style={styles.itemContainer}
+      onPress={() => handleSelect(item)}
+      activeOpacity={0.8}
+    >
       <View style={styles.iconWrapper}>{item.icon}</View>
       <Text style={styles.itemText}>{item.name}</Text>
       <Ionicons name="chevron-forward" size={20} color="#888" />
@@ -52,44 +56,68 @@ export default function AcademicThings({ navigation }) {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        <FlatList
-          data={academicItems}
-          keyExtractor={(item) => item.id}
-          renderItem={renderItem}
-          contentContainerStyle={{ paddingBottom: 20 }}
-        />
+      <View style={styles.header}>
+        <Text style={styles.title}>Faculty Appointments</Text>
+        <Text style={styles.subtitle}>Book and track your appointments</Text>
       </View>
+      <FlatList
+        data={academicItems}
+        keyExtractor={(item) => item.id}
+        renderItem={renderItem}
+        contentContainerStyle={styles.listContainer}
+      />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#e6f3ff' },
-  container: { padding: 20 },
+  safeArea: { flex: 1, backgroundColor: '#f2f6ff' },
+  header: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 10,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#003366',
+  },
+  subtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4,
+  },
+  listContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
   itemContainer: {
     backgroundColor: '#fff',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 16,
     paddingHorizontal: 16,
-    borderRadius: 10,
-    marginBottom: 12,
-    elevation: 1,
+    borderRadius: 12,
+    marginBottom: 14,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
   },
   iconWrapper: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
-    backgroundColor: '#f0f0f0',
+    marginRight: 14,
+    backgroundColor: '#e6f0ff',
   },
   itemText: {
     flex: 1,
     fontSize: 16,
-    color: '#111',
     fontWeight: '500',
+    color: '#333',
   },
 });

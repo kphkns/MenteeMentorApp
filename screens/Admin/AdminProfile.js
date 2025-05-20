@@ -8,7 +8,6 @@ import axios from 'axios';
 import * as ImagePicker from 'expo-image-picker';
 import {
   Ionicons,
-  FontAwesome5,
   MaterialCommunityIcons
 } from '@expo/vector-icons';
 
@@ -68,7 +67,7 @@ export default function AdminProfile({ navigation }) {
             Authorization: `Bearer ${token}`,
           },
         });
-        fetchProfile(); // Refresh data
+        fetchProfile();
       } catch (err) {
         Alert.alert('Error', 'Could not upload photo');
       }
@@ -119,7 +118,7 @@ export default function AdminProfile({ navigation }) {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.headerCard}>
-        <TouchableOpacity onPress={handleImagePick}>
+        <View style={styles.imageWrapper}>
           <Image
             source={
               profile.photo
@@ -128,7 +127,10 @@ export default function AdminProfile({ navigation }) {
             }
             style={styles.avatar}
           />
-        </TouchableOpacity>
+          <TouchableOpacity style={styles.cameraIcon} onPress={handleImagePick}>
+            <Ionicons name="camera" size={20} color="white" />
+          </TouchableOpacity>
+        </View>
         <View>
           <Text style={styles.name}>{profile.Name}</Text>
           <Text style={styles.login}>
@@ -137,11 +139,16 @@ export default function AdminProfile({ navigation }) {
         </View>
       </View>
 
-      <View style={styles.infoCard}>
-        <InfoItem label="EMAIL" value={profile.Email || 'N/A'} icon={<Ionicons name="mail-outline" size={18} color="#333" />} />
+      <View style={styles.card}>
+        <InfoItem
+          label="EMAIL"
+          value={profile.Email || 'N/A'}
+          icon={<Ionicons name="mail-outline" size={18} color="#333" />}
+        />
+
         <View style={styles.infoItem}>
           <View style={styles.iconWrapper}>
-            <Ionicons name="call-outline" size={18} color="#333" />
+            <Ionicons name="call-outline" size={18} color="#fff" />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.infoLabel}>CONTACT</Text>
@@ -153,15 +160,23 @@ export default function AdminProfile({ navigation }) {
                   onChangeText={setMobile}
                   keyboardType="phone-pad"
                 />
-                <TouchableOpacity onPress={updateMobile}>
-                  <Text style={{ color: '#007bff', marginTop: 5 }}>Save</Text>
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', gap: 15 }}>
+                  <TouchableOpacity onPress={updateMobile}>
+                    <Text style={styles.linkText}>Save</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => {
+                    setIsEditingMobile(false);
+                    setMobile(profile.mobile_no || '');
+                  }}>
+                    <Text style={[styles.linkText, { color: 'red' }]}>Cancel</Text>
+                  </TouchableOpacity>
+                </View>
               </>
             ) : (
               <>
                 <Text style={styles.infoValue}>{mobile || 'Not Provided'}</Text>
                 <TouchableOpacity onPress={() => setIsEditingMobile(true)}>
-                  <Text style={{ color: '#007bff', marginTop: 5 }}>Edit</Text>
+                  <Text style={styles.linkText}>Edit</Text>
                 </TouchableOpacity>
               </>
             )}
@@ -208,93 +223,120 @@ const styles = StyleSheet.create({
   container: {
     paddingVertical: 20,
     paddingHorizontal: 25,
-    backgroundColor: '#e6f3ff',
+    backgroundColor: '#f0f6ff',
     flexGrow: 1,
   },
   headerCard: {
     backgroundColor: '#007bff',
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 15,
-    borderRadius: 12,
-    marginBottom: 20,
+    padding: 20,
+    borderRadius: 16,
+    marginBottom: 25,
+    elevation: 3,
+  },
+  imageWrapper: {
+    position: 'relative',
+    marginRight: 20,
   },
   avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginRight: 15,
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    borderWidth: 3,
+    borderColor: "#fff",
+    backgroundColor: "#eee",
+  },
+  cameraIcon: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    backgroundColor: "#0056b3",
+    borderRadius: 14,
+    padding: 4,
     borderWidth: 2,
-    borderColor: '#fff',
+    borderColor: "#fff",
   },
   name: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '700',
+    color: "#fff",
+    fontSize: 22,
+    fontWeight: "700",
   },
   login: {
     color: '#d9e6ff',
     fontSize: 13,
-    marginTop: 2,
+    marginTop: 4,
   },
-  infoCard: {
+  card: {
     backgroundColor: '#fff',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 20,
+    elevation: 3,
   },
   infoItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 15,
+    marginBottom: 18,
   },
   iconWrapper: {
-    width: 30,
-    height: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#007bff',
-    borderRadius: 20,
-    marginRight: 15,
+    width: 36,
+    height: 36,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#007bff",
+    borderRadius: 18,
+    marginRight: 18,
+    elevation: 3,
   },
   infoLabel: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#333',
+    color: '#444',
   },
   infoValue: {
     fontSize: 16,
-    color: '#555',
+    color: '#000',
+    fontWeight: 'bold',
+    marginTop: 2,
   },
   input: {
     height: 40,
-    borderColor: '#ddd',
+    borderColor: '#ccc',
     borderWidth: 1,
     borderRadius: 8,
     paddingHorizontal: 10,
-    marginVertical: 5,
+    marginVertical: 6,
+  },
+  linkText: {
+    color: '#007bff',
+    fontSize: 14,
+    marginTop: 4,
+    fontWeight: '600',
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: '600',
     color: '#333',
-    marginBottom: 10,
     marginTop: 30,
+    marginBottom: 15,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
     marginVertical: 10,
+    
   },
   menuLabel: {
     fontSize: 16,
     marginLeft: 15,
+    fontWeight: '500',
   },
   logoutBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 15,
-    borderRadius: 8,
+    borderRadius: 10,
     backgroundColor: '#d9534f',
     marginTop: 30,
   },
@@ -302,6 +344,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: 'white',
     marginLeft: 10,
+    fontWeight: '600',
   },
   versionText: {
     fontSize: 12,

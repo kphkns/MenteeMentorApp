@@ -299,24 +299,24 @@ router.delete('/faculty/:id', (req, res) => {
 
 
 //--------------------------------------------------//----------------------------------------------------------------------->
-// ✅ Get all students (UPDATE THIS QUERY)
-router.get('/students', (req, res) => {
-  const query = `
-    SELECT s.Student_id, s.Name, s.Roll_no, s.Email, s.Batch, 
-           s.Dept_ID, d.Dept_name, 
-           s.Course_ID, c.Course_name, 
-           s.Faculty_id, f.Name AS Faculty_name
-    FROM student s
-    LEFT JOIN department d ON s.Dept_ID = d.Dept_id
-    LEFT JOIN course c ON s.Course_ID = c.Course_ID
-    LEFT JOIN faculty f ON s.Faculty_id = f.Faculty_id
-    ORDER BY s.Name ASC
-  `;
-  db.query(query, (err, results) => {
-    if (err) return res.status(500).json({ message: 'Failed to fetch students' });
-    res.status(200).json(results);
+  // ✅ Get all students (UPDATE THIS QUERY)
+  router.get('/students', (req, res) => {
+    const query = `
+      SELECT s.Student_id, s.Name, s.Roll_no, s.Email, s.Batch, 
+            s.Dept_ID, d.Dept_name, 
+            s.Course_ID, c.Course_name, 
+            s.Faculty_id, f.Name AS Faculty_name
+      FROM student s
+      LEFT JOIN department d ON s.Dept_ID = d.Dept_id
+      LEFT JOIN course c ON s.Course_ID = c.Course_ID
+      LEFT JOIN faculty f ON s.Faculty_id = f.Faculty_id
+      ORDER BY s.Name ASC
+    `;
+    db.query(query, (err, results) => {
+      if (err) return res.status(500).json({ message: 'Failed to fetch students' });
+      res.status(200).json(results);
+    });
   });
-});
 
 // ✅ Add a new student and create mentor card
 router.post('/students', (req, res) => {

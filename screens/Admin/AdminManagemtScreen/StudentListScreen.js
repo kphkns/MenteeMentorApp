@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   View, Text, FlatList, StyleSheet, ActivityIndicator,
   Modal, TextInput, TouchableOpacity, KeyboardAvoidingView,
-  Platform, Pressable, Alert, BackHandler
+  Platform, Pressable, Alert, BackHandler, RefreshControl
 } from 'react-native';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import axios from 'axios';
@@ -14,6 +14,7 @@ export default function StudentListScreen() {
   const [students, setStudents] = useState([]);
   const [filteredStudents, setFilteredStudents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editStudent, setEditStudent] = useState(null);
   const [editName, setEditName] = useState('');
@@ -43,7 +44,7 @@ export default function StudentListScreen() {
     };
 
     const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
-    return () => backHandler.remove(); // cleanup
+    return () => backHandler.remove();
   }, [selectedStudents]);
 
   useEffect(() => {
@@ -87,6 +88,12 @@ export default function StudentListScreen() {
     } catch (err) {
       Alert.alert('Error', 'Failed to fetch dropdown data');
     }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchStudents();
+    setRefreshing(false);
   };
 
   const openEditModal = (student) => {
@@ -177,8 +184,8 @@ export default function StudentListScreen() {
         onLongPress={() => onLongPressItem(item.Student_id)}
         style={({ pressed }) => [
           styles.itemContainer,
-          isSelected && { backgroundColor: '#cce5ff' },
-          pressed && { opacity: 0.9 }
+          isSelected && styles.itemSelected,
+          pressed && styles.itemPressed
         ]}
       >
         <View style={styles.itemContent}>
@@ -194,10 +201,10 @@ export default function StudentListScreen() {
           </View>
 
           {isSelected ? (
-            <Ionicons name="checkmark-circle" size={24} color="#007bff" />
+            <Ionicons name="checkmark-circle" size={28} color="#007bff" />
           ) : (
-            <TouchableOpacity onPress={() => openEditModal(item)}>
-              <Feather name="edit" size={22} color="#007bff" style={{ marginLeft: 8 }} />
+            <TouchableOpacity onPress={() => openEditModal(item)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Feather name="edit" size={24} color="#007bff" style={{ marginLeft: 10 }} />
             </TouchableOpacity>
           )}
         </View>
@@ -209,27 +216,28 @@ export default function StudentListScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Team</Text>
+        <Text style={styles.title}>Students</Text>
         {selectedStudents.length > 0 ? (
-          <TouchableOpacity style={styles.headerButton} onPress={handleMultipleDelete}>
-            <Ionicons name="trash-bin" size={28} color="#d9534f" />
+          <TouchableOpacity style={styles.headerButton} onPress={handleMultipleDelete} accessibilityLabel={`Delete ${selectedStudents.length} students`}>
+            <Ionicons name="trash-bin" size={30} color="#d9534f" />
           </TouchableOpacity>
         ) : (
-          <TouchableOpacity style={styles.headerButton} onPress={() => Alert.alert('Add Student', 'Add student functionality')}>
-            <Ionicons name="add-circle-outline" size={32} color="#007bff" />
+          <TouchableOpacity style={styles.headerButton} onPress={() => Alert.alert('Add Student', 'Add student functionality')} accessibilityLabel="Add new student">
+            <Ionicons name="add-circle-outline" size={34} color="#007bff" />
           </TouchableOpacity>
         )}
       </View>
 
       <TextInput
-        placeholder="Search for students"
+        placeholder="Search students by name, email, or roll no"
         value={search}
         onChangeText={setSearch}
         style={styles.searchInput}
+        clearButtonMode="while-editing"
       />
 
       {loading ? (
-        <ActivityIndicator size="large" color="#007bff" style={{ marginTop: 30 }} />
+        <ActivityIndicator size="large" color="#007bff" style={{ marginTop: 40 }} />
       ) : filteredStudents.length === 0 ? (
         <Text style={styles.emptyText}>No students found</Text>
       ) : (
@@ -237,20 +245,48 @@ export default function StudentListScreen() {
           data={filteredStudents}
           keyExtractor={(item) => item.Student_id.toString()}
           renderItem={renderItem}
-          contentContainerStyle={{ paddingBottom: 20 }}
+          contentContainerStyle={{ paddingBottom: 30 }}
           extraData={selectedStudents}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#007bff']}
+            />
+          }
         />
       )}
 
       {/* Edit Modal */}
-      <Modal visible={modalVisible} transparent animationType="slide">
+      <Modal visible={modalVisible} transparent animationType="fade">
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalBackground}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Edit Student</Text>
 
-            <TextInput value={editName} onChangeText={setEditName} placeholder="Name" style={styles.input} />
-            <TextInput value={editEmail} onChangeText={setEditEmail} placeholder="Email" keyboardType="email-address" style={styles.input} />
-            <TextInput value={editRoll} onChangeText={setEditRoll} placeholder="Roll No" style={styles.input} />
+            <TextInput
+              value={editName}
+              onChangeText={setEditName}
+              placeholder="Name"
+              style={styles.input}
+              autoCapitalize="words"
+              returnKeyType="next"
+            />
+            <TextInput
+              value={editEmail}
+              onChangeText={setEditEmail}
+              placeholder="Email"
+              keyboardType="email-address"
+              style={styles.input}
+              autoCapitalize="none"
+              returnKeyType="next"
+            />
+            <TextInput
+              value={editRoll}
+              onChangeText={setEditRoll}
+              placeholder="Roll No"
+              style={styles.input}
+              returnKeyType="next"
+            />
 
             <RNPickerSelect
               placeholder={{ label: 'Select Batch...', value: null }}
@@ -258,6 +294,7 @@ export default function StudentListScreen() {
               onValueChange={setEditBatch}
               items={batches.map((batch) => ({ label: batch.batch_name, value: batch.Batch_id }))}
               style={pickerStyle}
+              useNativeAndroidPickerStyle={false}
             />
 
             <RNPickerSelect
@@ -266,6 +303,7 @@ export default function StudentListScreen() {
               onValueChange={setEditDepartment}
               items={departments.map((dept) => ({ label: dept.Dept_name, value: dept.Dept_id }))}
               style={pickerStyle}
+              useNativeAndroidPickerStyle={false}
             />
 
             <RNPickerSelect
@@ -274,6 +312,7 @@ export default function StudentListScreen() {
               onValueChange={setEditCourse}
               items={courses.map((course) => ({ label: course.Course_name, value: course.Course_ID }))}
               style={pickerStyle}
+              useNativeAndroidPickerStyle={false}
             />
 
             <RNPickerSelect
@@ -282,13 +321,14 @@ export default function StudentListScreen() {
               onValueChange={setEditFaculty}
               items={faculties.map((faculty) => ({ label: faculty.Name, value: faculty.Faculty_id }))}
               style={pickerStyle}
+              useNativeAndroidPickerStyle={false}
             />
 
             <View style={styles.modalButtons}>
-              <TouchableOpacity style={styles.saveBtn} onPress={saveStudentChanges}>
+              <TouchableOpacity style={styles.saveBtn} onPress={saveStudentChanges} activeOpacity={0.8}>
                 <Text style={styles.saveText}>Save</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => setModalVisible(false)}>
+              <TouchableOpacity style={styles.cancelBtn} onPress={() => setModalVisible(false)} activeOpacity={0.8}>
                 <Text style={styles.cancelText}>Cancel</Text>
               </TouchableOpacity>
             </View>
@@ -300,35 +340,178 @@ export default function StudentListScreen() {
 }
 
 const pickerStyle = {
-  inputIOS: { backgroundColor: '#f0f0f0', padding: 12, borderRadius: 10, borderColor: '#ccc', borderWidth: 1, marginBottom: 10 },
-  inputAndroid: { backgroundColor: '#f0f0f0', padding: 12, borderRadius: 10, borderColor: '#ccc', borderWidth: 1, marginBottom: 10 },
+  inputIOS: {
+    fontSize: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 6,
+    color: '#333',
+    paddingRight: 30,
+    marginVertical: 8,
+  },
+  inputAndroid: {
+    fontSize: 16,
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 6,
+    color: '#333',
+    paddingRight: 30,
+    marginVertical: 8,
+  },
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8f9fb', padding: 16 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  title: { fontSize: 24, fontWeight: 'bold', color: '#333' },
-  headerButton: { padding: 6 },
-
-  searchInput: { backgroundColor: '#fff', padding: 12, borderRadius: 12, borderColor: '#ccc', borderWidth: 1, marginBottom: 15, fontSize: 16 },
-  emptyText: { textAlign: 'center', marginTop: 50, color: '#999', fontSize: 16 },
-
-  itemContainer: { backgroundColor: '#fff', borderRadius: 16, padding: 12, flexDirection: 'row', alignItems: 'center', marginBottom: 10, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 8, elevation: 4 },
-  itemContent: { flexDirection: 'row', alignItems: 'center', flex: 1, justifyContent: 'space-between' },
-  avatarCircle: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#007bff', justifyContent: 'center', alignItems: 'center' },
-  avatarText: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
-  itemInfo: { flex: 1, marginLeft: 12 },
-  itemName: { fontSize: 18, fontWeight: '600', color: '#333' },
-  itemSubInfo: { fontSize: 14, color: '#666', marginTop: 2 },
-
-  modalBackground: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-  modalCard: { width: '90%', backgroundColor: '#fff', padding: 20, borderRadius: 20 },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginBottom: 20 },
-  input: { backgroundColor: '#f0f0f0', padding: 12, borderRadius: 10, borderColor: '#ccc', borderWidth: 1, marginBottom: 10 },
-
-  modalButtons: { flexDirection: 'row', marginTop: 10 },
-  saveBtn: { flex: 1, backgroundColor: '#28a745', padding: 12, marginRight: 8, borderRadius: 10, alignItems: 'center' },
-  cancelBtn: { flex: 1, backgroundColor: '#dc3545', padding: 12, borderRadius: 10, alignItems: 'center' },
-  saveText: { color: '#fff', fontWeight: 'bold' },
-  cancelText: { color: '#fff', fontWeight: 'bold' },
+  container: {
+    flex: 1,
+    backgroundColor: '#f7f9fc',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#1c1c1e',
+  },
+  headerButton: {
+    padding: 6,
+  },
+  searchInput: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 16,
+    borderColor: '#ddd',
+    borderWidth: 1,
+    marginBottom: 14,
+    shadowColor: '#000',
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  itemContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    padding: 14,
+    marginVertical: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  itemSelected: {
+    backgroundColor: '#e0f0ff',
+  },
+  itemPressed: {
+    opacity: 0.7,
+  },
+  avatarCircle: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#007bff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+  },
+  avatarText: {
+    color: 'white',
+    fontWeight: '700',
+    fontSize: 22,
+  },
+  itemContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  itemInfo: {
+    flex: 1,
+  },
+  itemName: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#222',
+  },
+  itemSubInfo: {
+    color: '#555',
+    marginTop: 2,
+  },
+  emptyText: {
+    textAlign: 'center',
+    marginTop: 60,
+    fontSize: 18,
+    color: '#888',
+  },
+  modalBackground: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.28)',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  modalCard: {
+    backgroundColor: 'white',
+    borderRadius: 18,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 10,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    marginBottom: 18,
+    color: '#1c1c1e',
+  },
+  input: {
+    backgroundColor: '#f9f9f9',
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 16,
+    borderColor: '#ccc',
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 14,
+  },
+  saveBtn: {
+    backgroundColor: '#007bff',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 10,
+    marginLeft: 14,
+  },
+  saveText: {
+    color: 'white',
+    fontWeight: '700',
+    fontSize: 16,
+  },
+  cancelBtn: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 10,
+    borderColor: '#ccc',
+    borderWidth: 1,
+  },
+  cancelText: {
+    color: '#444',
+    fontWeight: '600',
+    fontSize: 16,
+  },
 });

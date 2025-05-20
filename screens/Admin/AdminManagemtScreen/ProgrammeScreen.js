@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  FlatList, Alert, StyleSheet, ActivityIndicator, Modal, BackHandler
+  FlatList, Alert, StyleSheet, ActivityIndicator,
+  Modal, BackHandler, RefreshControl
 } from 'react-native';
 import axios from 'axios';
 import { Ionicons, Feather } from '@expo/vector-icons';
@@ -21,6 +22,29 @@ export default function ProgrammeScreen() {
   const [selectedProgs, setSelectedProgs] = useState([]);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [expandedProgs, setExpandedProgs] = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const fetchProgrammes = async () => {
+    try {
+      const res = await axios.get(`${SERVER_URL}/admin/courses`);
+      setProgrammes(res.data);
+    } catch {
+      Alert.alert('Error', 'Failed to fetch programmes');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const fetchDepartments = async () => {
+    try {
+      const res = await axios.get(`${SERVER_URL}/admin/departments`);
+      setDepartments(res.data);
+    } catch {
+      Alert.alert('Error', 'Failed to fetch departments');
+    }
+  };
 
   useEffect(() => {
     fetchProgrammes();
@@ -40,27 +64,6 @@ export default function ProgrammeScreen() {
     return () => backHandler.remove();
   }, [isSelectionMode]);
 
-  const fetchProgrammes = async () => {
-    setLoading(true);
-    try {
-      const res = await axios.get(`${SERVER_URL}/admin/courses`);
-      setProgrammes(res.data);
-    } catch {
-      Alert.alert('Error', 'Failed to fetch programmes');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchDepartments = async () => {
-    try {
-      const res = await axios.get(`${SERVER_URL}/admin/departments`);
-      setDepartments(res.data);
-    } catch {
-      Alert.alert('Error', 'Failed to fetch departments');
-    }
-  };
-
   const resetForm = () => {
     setCourseName('');
     setSelectedDept('');
@@ -72,6 +75,7 @@ export default function ProgrammeScreen() {
       return Alert.alert('Validation', 'Please fill all fields');
     }
     try {
+      setSaving(true);
       if (editingCourse) {
         await axios.put(`${SERVER_URL}/admin/courses/${editingCourse.Course_ID}`, {
           Course_name: courseName,
@@ -89,6 +93,8 @@ export default function ProgrammeScreen() {
       Alert.alert(editingCourse ? 'Updated' : 'Added', `Programme ${editingCourse ? 'updated' : 'added'} successfully`);
     } catch {
       Alert.alert('Error', 'Failed to save programme');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -128,6 +134,11 @@ export default function ProgrammeScreen() {
     p.Course_name.toLowerCase().includes(search.toLowerCase())
   );
 
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchProgrammes();
+  }, []);
+
   const renderItem = ({ item }) => {
     const isSelected = selectedProgs.includes(item.Course_ID);
     const isExpanded = expandedProgs.includes(item.Course_ID);
@@ -146,14 +157,12 @@ export default function ProgrammeScreen() {
             toggleExpansion(item.Course_ID);
           }
         }}
-        style={[styles.card, isSelected && { backgroundColor: '#e0f0ff' }]}
+        style={[styles.card, isSelected && { backgroundColor: '#e6f2ff' }]}
       >
         <View style={{ flex: 1 }}>
           <Text style={styles.cardTitle}>{item.Course_name}</Text>
           {isExpanded && department && (
-            <Text style={styles.cardSub}>
-              Department: <Text style={{ fontWeight: '600' }}>{department.Dept_name}</Text>
-            </Text>
+            <Text style={styles.cardSub}>Department: <Text style={{ fontWeight: '600' }}>{department.Dept_name}</Text></Text>
           )}
         </View>
         {!isSelectionMode && (
@@ -163,7 +172,7 @@ export default function ProgrammeScreen() {
             setEditingCourse(item);
             setModalVisible(true);
           }}>
-            <Feather name="edit" size={20} color="#007bff" />
+            <Feather name="edit-2" size={20} color="#007bff" />
           </TouchableOpacity>
         )}
       </TouchableOpacity>
@@ -196,7 +205,7 @@ export default function ProgrammeScreen() {
       />
 
       {loading ? (
-        <ActivityIndicator size="large" color="#007bff" />
+        <ActivityIndicator size="large" color="#007bff" style={{ marginTop: 20 }} />
       ) : filteredProgrammes.length === 0 ? (
         <Text style={styles.emptyText}>No programmes found 😕</Text>
       ) : (
@@ -204,10 +213,12 @@ export default function ProgrammeScreen() {
           data={filteredProgrammes}
           keyExtractor={(item) => item.Course_ID.toString()}
           renderItem={renderItem}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           contentContainerStyle={{ paddingBottom: 100 }}
         />
       )}
 
+      {/* Modal */}
       <Modal visible={modalVisible} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -219,10 +230,7 @@ export default function ProgrammeScreen() {
               style={styles.input}
             />
             <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={selectedDept}
-                onValueChange={setSelectedDept}
-              >
+              <Picker selectedValue={selectedDept} onValueChange={setSelectedDept}>
                 <Picker.Item label="Select Department" value="" />
                 {departments.map(dept => (
                   <Picker.Item key={dept.Dept_id} label={dept.Dept_name} value={dept.Dept_id} />
@@ -230,15 +238,20 @@ export default function ProgrammeScreen() {
               </Picker>
             </View>
             <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.saveBtn} onPress={handleAddOrUpdate}>
-                <Text style={styles.saveText}>{editingCourse ? 'Update' : 'Add'}</Text>
+              <TouchableOpacity
+                style={[styles.saveBtn, saving && { opacity: 0.6 }]}
+                onPress={handleAddOrUpdate}
+                disabled={saving}
+              >
+                <Text style={styles.saveText}>{saving ? 'Saving...' : (editingCourse ? 'Update' : 'Add')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.cancelBtn}
                 onPress={() => {
                   setModalVisible(false);
                   resetForm();
-                }}>
+                }}
+              >
                 <Text style={styles.cancelText}>Cancel</Text>
               </TouchableOpacity>
             </View>
@@ -248,6 +261,7 @@ export default function ProgrammeScreen() {
     </View>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f7faff', padding: 16 },
