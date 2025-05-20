@@ -6,7 +6,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 
-const SERVER_URL = 'http://192.168.65.136:5000';
+const SERVER_URL = 'http://192.168.134.136:5000';
 
 export default function AdminChangePassword({ navigation }) {
   const [oldPassword, setOldPassword] = useState('');

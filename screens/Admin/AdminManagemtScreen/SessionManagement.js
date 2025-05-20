@@ -1,340 +1,352 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, FlatList, StyleSheet, Modal, TextInput,
-  TouchableOpacity, Alert, ScrollView
+  View,
+  Text,
+  FlatList,
+  StyleSheet,
+  ActivityIndicator,
+  TextInput,
+  RefreshControl,
+  Alert,
+  Button,
+  TouchableOpacity,
 } from 'react-native';
-import RNPickerSelect from 'react-native-picker-select';
-import Icon from 'react-native-vector-icons/MaterialIcons';
 import axios from 'axios';
+import RNPickerSelect from 'react-native-picker-select';
 
-const SERVER_URL = 'http://192.168.65.136:5000';
+const SERVER_URL = 'http://192.168.134.136:5000';
 
-const SessionManagement = () => {
+const CustomCheckbox = ({ checked, onToggle }) => (
+  <TouchableOpacity
+    onPress={onToggle}
+    style={[styles.checkboxBase, checked && styles.checkboxChecked]}
+  >
+    {checked && <Text style={styles.checkboxTick}>✓</Text>}
+  </TouchableOpacity>
+);
+
+export default function StudentBasicListScreen() {
   const [students, setStudents] = useState([]);
   const [filteredStudents, setFilteredStudents] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [selectAll, setSelectAll] = useState(false);
+  const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
   const [batches, setBatches] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [courses, setCourses] = useState([]);
-  const [selectedBatch, setSelectedBatch] = useState('');
-  const [selectedDept, setSelectedDept] = useState('');
-  const [selectedCourse, setSelectedCourse] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState(null);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [editStudent, setEditStudent] = useState(null);
+
+  const [selectedBatch, setSelectedBatch] = useState(null);
+  const [selectedDept, setSelectedDept] = useState(null);
+  const [selectedCourse, setSelectedCourse] = useState(null);
 
   useEffect(() => {
-    fetchFilters();
+    fetchDropdowns();
     fetchStudents();
   }, []);
 
   useEffect(() => {
-    filterStudents();
-  }, [searchQuery, selectedBatch, selectedDept, selectedCourse]);
+    if (selectedDept) {
+      fetchCoursesByDepartment(selectedDept);
+    } else {
+      setCourses([]);
+      setSelectedCourse(null);
+    }
+  }, [selectedDept]);
 
-  const fetchFilters = async () => {
+  useEffect(() => {
+    setSearch('');
+    fetchStudents();
+  }, [selectedBatch, selectedDept, selectedCourse]);
+
+  useEffect(() => {
+    if (search.trim() === '') {
+      setFilteredStudents(students);
+    } else {
+      const filtered = students.filter((s) =>
+        s.Name.toLowerCase().includes(search.toLowerCase()) ||
+        s.Email.toLowerCase().includes(search.toLowerCase()) ||
+        s.Roll_no.toLowerCase().includes(search.toLowerCase())
+      );
+      setFilteredStudents(filtered);
+    }
+  }, [search, students]);
+
+  const fetchDropdowns = async () => {
     try {
-      const deptRes = await axios.get(`${SERVER_URL}/departments`);
-      const batchRes = await axios.get(`${SERVER_URL}/batches`);
-      const courseRes = await axios.get(`${SERVER_URL}/courses`);
-      setDepartments(deptRes.data);
+      const [batchRes, deptRes] = await Promise.all([
+        axios.get(`${SERVER_URL}/admin/batchess`),
+        axios.get(`${SERVER_URL}/admin/departmentss`),
+      ]);
       setBatches(batchRes.data);
-      setCourses(courseRes.data);
+      setDepartments(deptRes.data);
     } catch (err) {
-      console.error('Error fetching filters:', err);
-      Alert.alert('Error', 'Failed to load filters');
+      Alert.alert('Error', 'Failed to load dropdown data');
+    }
+  };
+
+  const fetchCoursesByDepartment = async (deptId) => {
+    try {
+      const res = await axios.get(`${SERVER_URL}/admin/coursess`, {
+        params: { dept: deptId },
+      });
+      setCourses(res.data);
+      setSelectedCourse(null);
+    } catch (err) {
+      Alert.alert('Error', 'Failed to load courses');
     }
   };
 
   const fetchStudents = async () => {
+    setLoading(true);
     try {
-      const res = await axios.get(`${SERVER_URL}/students`);
+      const params = {};
+      if (selectedBatch) params.batch = selectedBatch;
+      if (selectedDept) params.dept = selectedDept;
+      if (selectedCourse) params.course = selectedCourse;
+
+      const res = await axios.get(`${SERVER_URL}/admin/studentss`, { params });
       setStudents(res.data);
       setFilteredStudents(res.data);
+      setSelectedIds([]);
+      setSelectAll(false);
     } catch (err) {
-      console.error('Error fetching students:', err);
       Alert.alert('Error', 'Failed to load students');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const filterStudents = () => {
-    const filtered = students.filter((student) =>
-      (searchQuery === '' || student.Name?.toLowerCase().includes(searchQuery.toLowerCase())) &&
-      (selectedBatch === '' || student.Batch_ID === selectedBatch) &&
-      (selectedDept === '' || student.Dept_ID === selectedDept) &&
-      (selectedCourse === '' || student.Course_ID === selectedCourse)
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchStudents();
+    setRefreshing(false);
+  };
+
+  const toggleSelect = (id) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((sid) => sid !== id) : [...prev, id]
     );
-    setFilteredStudents(filtered);
   };
 
-  const handleEdit = (student) => {
-    setEditStudent(student);
-    setSelectedStatus(student.status);
-    setModalVisible(true);
+  const toggleSelectAll = () => {
+    if (selectAll) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredStudents.map((s) => s.Student_id));
+    }
+    setSelectAll(!selectAll);
   };
 
-  const handleSave = async () => {
+  const updateStatus = async (newStatus) => {
+    if (selectedIds.length === 0) {
+      Alert.alert('No Selection', 'Please select at least one student.');
+      return;
+    }
+
     try {
-      await axios.put(`${SERVER_URL}/students/${editStudent.Student_ID}`, {
-        status: selectedStatus,
+      await axios.put(`${SERVER_URL}/admin/students/statuss`, {
+        studentIds: selectedIds,
+        status: newStatus,
       });
+      Alert.alert('Success', 'Status updated successfully.');
       fetchStudents();
-      setModalVisible(false);
-    } catch (error) {
-      console.error('Error updating student:', error);
-      Alert.alert('Error', 'Failed to update student');
+    } catch (err) {
+      Alert.alert('Error', 'Failed to update status');
     }
   };
 
-  const handleSelectAll = async (statusValue) => {
-    try {
-      await Promise.all(
-        filteredStudents.map((student) =>
-          axios.put(`${SERVER_URL}/students/${student.Student_ID}`, {
-            status: statusValue,
-          })
-        )
-      );
-      fetchStudents();
-    } catch (error) {
-      console.error('Error updating all students:', error);
-      Alert.alert('Error', 'Failed to update all students');
-    }
-  };
-
-  const renderStudent = ({ item }) => (
-    <View style={styles.card}>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.cardText}>Name: {item.Name}</Text>
-        <Text style={styles.cardText}>Roll No: {item.Roll_No}</Text>
-        <Text style={styles.cardText}>
-          Status: <Text style={{ fontWeight: 'bold', color: item.status === 1 ? '#4CAF50' : '#F44336' }}>
-            {item.status === 1 ? 'Active' : 'Inactive'}
-          </Text>
-        </Text>
+  const renderItem = ({ item }) => (
+    <View style={styles.item}>
+      <View style={styles.checkboxRow}>
+        <CustomCheckbox
+          checked={selectedIds.includes(item.Student_id)}
+          onToggle={() => toggleSelect(item.Student_id)}
+        />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.name}>{item.Name}</Text>
+          <Text style={styles.subText}>Roll No: {item.Roll_no}</Text>
+          <Text style={styles.subText}>Email: {item.Email}</Text>
+          <Text style={styles.status}>{item.status === 1 ? '🟢 Active' : '🔴 Inactive'}</Text>
+        </View>
       </View>
-      <TouchableOpacity onPress={() => handleEdit(item)} style={styles.editButton}>
-        <Icon name="edit" size={20} color="#fff" />
-      </TouchableOpacity>
     </View>
   );
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 120 }}>
-      <Text style={styles.heading}>Session Management</Text>
-
-      <View style={styles.filterSection}>
+    <View style={styles.container}>
+      <View style={styles.filtersContainer}>
         <RNPickerSelect
-          onValueChange={(value) => setSelectedBatch(value)}
+          onValueChange={setSelectedBatch}
           value={selectedBatch}
-          placeholder={{ label: 'All Batches', value: '' }}
-          items={batches.map((b) => ({ label: b.Batch_Name, value: b.Batch_ID }))}
+          placeholder={{ label: 'Select Batch', value: null }}
+          items={batches.map((b) => ({ label: b.batch_name, value: b.Batch_id }))}
           style={pickerSelectStyles}
+          useNativeAndroidPickerStyle={false}
         />
-
         <RNPickerSelect
-          onValueChange={(value) => setSelectedDept(value)}
+          onValueChange={setSelectedDept}
           value={selectedDept}
-          placeholder={{ label: 'All Departments', value: '' }}
-          items={departments.map((d) => ({ label: d.Dept_Name, value: d.Dept_ID }))}
+          placeholder={{ label: 'Select Department', value: null }}
+          items={departments.map((d) => ({ label: d.Dept_name, value: d.Dept_id }))}
           style={pickerSelectStyles}
+          useNativeAndroidPickerStyle={false}
         />
-
         <RNPickerSelect
-          onValueChange={(value) => setSelectedCourse(value)}
+          onValueChange={setSelectedCourse}
           value={selectedCourse}
-          placeholder={{ label: 'All Courses', value: '' }}
-          items={courses.map((c) => ({ label: c.Course_Name, value: c.Course_ID }))}
+          placeholder={{ label: 'Select Course', value: null }}
+          items={courses.map((c) => ({ label: c.Course_name, value: c.Course_ID }))}
           style={pickerSelectStyles}
-        />
-
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search by name"
-          value={searchQuery}
-          onChangeText={setSearchQuery}
+          useNativeAndroidPickerStyle={false}
+          disabled={courses.length === 0}
         />
       </View>
 
-      <View style={styles.selectAllContainer}>
-        <TouchableOpacity
-          style={[styles.selectAllButton, { backgroundColor: '#4CAF50' }]}
-          onPress={() => handleSelectAll(1)}
-        >
-          <Text style={styles.selectAllText}>Set All Active</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.selectAllButton, { backgroundColor: '#F44336' }]}
-          onPress={() => handleSelectAll(0)}
-        >
-          <Text style={styles.selectAllText}>Set All Inactive</Text>
-        </TouchableOpacity>
-      </View>
-
-      <FlatList
-        data={filteredStudents}
-        keyExtractor={(item) => item.Student_ID.toString()}
-        renderItem={renderStudent}
-        scrollEnabled={false}
+      <TextInput
+        placeholder="Search by name, email, or roll no"
+        value={search}
+        onChangeText={setSearch}
+        style={styles.searchInput}
       />
 
-      <Modal visible={modalVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Update Student Status</Text>
-            <RNPickerSelect
-              onValueChange={(value) => setSelectedStatus(value)}
-              value={selectedStatus}
-              items={[
-                { label: 'Inactive', value: 0 },
-                { label: 'Active', value: 1 },
-              ]}
-              style={pickerSelectStyles}
-            />
-            <View style={styles.modalActions}>
-              <TouchableOpacity onPress={handleSave} style={styles.saveButton}>
-                <Text style={styles.saveButtonText}>Save</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.cancelButton}>
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+      <View style={styles.actionRow}>
+        <View style={styles.checkboxRow}>
+          <CustomCheckbox checked={selectAll} onToggle={toggleSelectAll} />
+          <Text>Select All</Text>
         </View>
-      </Modal>
-    </ScrollView>
+        <View style={styles.buttonGroup}>
+          <View style={{ marginRight: 10 }}>
+            <Button title="Set Active" onPress={() => updateStatus(1)} />
+          </View>
+          <Button title="Set Inactive" color="red" onPress={() => updateStatus(0)} />
+        </View>
+      </View>
+
+      {loading ? (
+        <ActivityIndicator size="large" color="#007bff" style={{ marginTop: 30 }} />
+      ) : (
+        <FlatList
+          data={filteredStudents}
+          keyExtractor={(item) => item.Student_id.toString()}
+          renderItem={renderItem}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#007bff']} />
+          }
+          ListEmptyComponent={() => (
+            <Text style={{ textAlign: 'center', marginTop: 20, color: '#666' }}>
+              No students found.
+            </Text>
+          )}
+        />
+      )}
+    </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
-    backgroundColor: '#f4f6f8',
+    flex: 1,
+    backgroundColor: '#f9fafb',
+    padding: 15,
   },
-  heading: {
-    fontSize: 22,
-    fontWeight: '700',
-    marginBottom: 16,
-    textAlign: 'center',
-    color: '#222',
-  },
-  filterSection: {
-    marginBottom: 16,
+  filtersContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginBottom: 12,
   },
   searchInput: {
     backgroundColor: '#fff',
     padding: 10,
-    marginTop: 8,
     borderRadius: 8,
+    marginBottom: 12,
     borderColor: '#ccc',
     borderWidth: 1,
   },
-  selectAllContainer: {
+  item: {
+    backgroundColor: '#fff',
+    padding: 15,
+    marginBottom: 10,
+    borderRadius: 10,
+    elevation: 2,
+  },
+  name: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#222',
+  },
+  subText: {
+    fontSize: 14,
+    color: '#444',
+    marginTop: 2,
+  },
+  status: {
+    marginTop: 6,
+    fontWeight: 'bold',
+    color: '#555',
+  },
+  checkboxRow: {
     flexDirection: 'row',
+    alignItems: 'center',
+  },
+  checkboxBase: {
+    width: 24,
+    height: 24,
+    borderRadius: 5,
+    borderWidth: 2,
+    borderColor: '#007bff',
+    backgroundColor: 'transparent',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  checkboxChecked: {
+    backgroundColor: '#007bff',
+  },
+  checkboxTick: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 12,
   },
-  selectAllButton: {
-    flex: 1,
-    marginHorizontal: 5,
-    padding: 12,
-    borderRadius: 8,
-  },
-  selectAllText: {
-    color: '#fff',
-    textAlign: 'center',
-    fontWeight: '600',
-  },
-  card: {
+  buttonGroup: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 12,
-    marginVertical: 6,
-    elevation: 2,
-    shadowColor: '#000',
-  },
-  cardText: {
-    fontSize: 14,
-    color: '#333',
-    marginBottom: 4,
-  },
-  editButton: {
-    backgroundColor: '#2196F3',
-    padding: 8,
-    borderRadius: 20,
-    alignSelf: 'flex-start',
-    marginLeft: 10,
-    marginTop: 4,
-  },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.3)',
     alignItems: 'center',
-  },
-  modalContent: {
-    width: '85%',
-    backgroundColor: '#fff',
-    padding: 24,
-    borderRadius: 16,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  modalActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 24,
-  },
-  saveButton: {
-    backgroundColor: '#4CAF50',
-    padding: 10,
-    borderRadius: 8,
-    width: '45%',
-  },
-  cancelButton: {
-    backgroundColor: '#F44336',
-    padding: 10,
-    borderRadius: 8,
-    width: '45%',
-  },
-  saveButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  cancelButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-    textAlign: 'center',
   },
 });
 
 const pickerSelectStyles = {
   inputIOS: {
-    backgroundColor: '#fff',
-    padding: 12,
-    marginVertical: 6,
-    borderRadius: 8,
-    borderColor: '#ccc',
-    borderWidth: 1,
     fontSize: 14,
-    color: '#333',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 6,
+    color: 'black',
+    paddingRight: 30,
+    marginBottom: 10,
+    minWidth: 110,
+    backgroundColor: 'white',
   },
   inputAndroid: {
-    backgroundColor: '#fff',
-    padding: 12,
-    marginVertical: 6,
-    borderRadius: 8,
-    borderColor: '#ccc',
-    borderWidth: 1,
     fontSize: 14,
-    color: '#333',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 6,
+    color: 'black',
+    paddingRight: 30,
+    marginBottom: 10,
+    minWidth: 110,
+    backgroundColor: 'white',
   },
 };
-
-export default SessionManagement;

@@ -14,7 +14,7 @@ import * as FileSystem from 'expo-file-system';
 import XLSX from 'xlsx';
 import { Picker } from '@react-native-picker/picker';
 
-const SERVER_URL = 'http://192.168.65.136:5000';
+const SERVER_URL = 'http://192.168.134.136:5000';
 const TEMPLATE_URL = `${SERVER_URL}/templates/student_upload_format.xlsx`;
 
 export default function ExcelUploadScreen() {

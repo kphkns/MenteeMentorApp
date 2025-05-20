@@ -9,7 +9,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { Ionicons } from '@expo/vector-icons';
 
-const API_URL = 'http://192.168.65.136:5000';
+const API_URL = 'http://192.168.134.136:5000';
 
 export default function StudentAppointmentsScreen() {
   const [appointments, setAppointments] = useState([]);

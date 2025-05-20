@@ -21,7 +21,7 @@ export default function StudentAppointmentScreen({ navigation }) {
   const [message, setMessage] = useState('');
   const [hasActiveAppointment, setHasActiveAppointment] = useState(false);
 
-  const API_URL = 'http://192.168.65.136:5000';
+  const API_URL = 'http://192.168.134.136:5000';
 
   useEffect(() => {
     const init = async () => {

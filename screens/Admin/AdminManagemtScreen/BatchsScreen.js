@@ -7,7 +7,7 @@ import {
 import axios from 'axios';
 import { Ionicons, Feather } from '@expo/vector-icons';
 
-const SERVER_URL = 'http://192.168.65.136:5000';
+const SERVER_URL = 'http://192.168.134.136:5000';
 
 export default function AddBatchesScreen() {
   const [batches, setBatches] = useState([]);
