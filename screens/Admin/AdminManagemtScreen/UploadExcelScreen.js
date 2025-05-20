@@ -21,6 +21,7 @@ export default function ExcelUploadScreen() {
   const [batchList, setBatchList] = useState([]);
   const [deptList, setDeptList] = useState([]);
   const [courseList, setCourseList] = useState([]);
+  const [filteredCourses, setFilteredCourses] = useState([]);
 
   const [selectedBatch, setSelectedBatch] = useState('');
   const [selectedDept, setSelectedDept] = useState('');
@@ -137,6 +138,13 @@ export default function ExcelUploadScreen() {
     Linking.openURL(TEMPLATE_URL);
   };
 
+  const handleDeptChange = (deptId) => {
+    setSelectedDept(deptId);
+    setSelectedCourse('');
+    const filtered = courseList.filter(course => course.Dept_ID === deptId);
+    setFilteredCourses(filtered);
+  };
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>📋 Upload Student Excel Sheet</Text>
@@ -157,7 +165,7 @@ export default function ExcelUploadScreen() {
         <Text style={styles.label}>Department</Text>
         <Picker
           selectedValue={selectedDept}
-          onValueChange={setSelectedDept}
+          onValueChange={handleDeptChange}
           style={styles.picker}
         >
           <Picker.Item label="Select Department..." value="" />
@@ -171,10 +179,15 @@ export default function ExcelUploadScreen() {
           selectedValue={selectedCourse}
           onValueChange={setSelectedCourse}
           style={styles.picker}
+          enabled={filteredCourses.length > 0}
         >
           <Picker.Item label="Select Course..." value="" />
-          {courseList.map(course => (
-            <Picker.Item key={course.Course_ID} label={course.Course_name} value={course.Course_ID} />
+          {filteredCourses.map(course => (
+            <Picker.Item
+              key={course.Course_ID}
+              label={course.Course_name}
+              value={course.Course_ID}
+            />
           ))}
         </Picker>
 
@@ -244,7 +257,6 @@ const styles = StyleSheet.create({
     color: '#1a202c',
     borderWidth: 1,
     borderColor: '#cbd5e1',
-    // Android specific padding fix for picker
     height: 50,
   },
   uploadBtn: {

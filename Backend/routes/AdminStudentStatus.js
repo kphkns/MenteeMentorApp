@@ -46,6 +46,19 @@ router.get('/coursess', (req, res) => {
   });
 });
 
+// GET courses by department
+router.get('/courses-by-dept/:deptId', (req, res) => {
+  const { deptId } = req.params;
+  const sql = 'SELECT Course_ID, Course_name FROM course WHERE Dept_ID = ?';
+  db.query(sql, [deptId], (err, results) => {
+    if (err) {
+      console.error('Error fetching courses by department:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+    res.json(results);
+  });
+});
+
 
 
 // Get students with optional filters batch, dept, course
@@ -85,17 +98,12 @@ router.get('/studentss', (req, res) => {
   });
 });
 
-// Update student status (bulk update with 1 or 0)
-// PUT: /admin/students/status
-router.put('/students/statuss', (req, res) => {
+// Update student status
+router.put('/update-status', (req, res) => {
   const { studentIds, status } = req.body;
 
-  if (
-    !Array.isArray(studentIds) ||
-    studentIds.length === 0 ||
-    ![1, 0].includes(status)
-  ) {
-    return res.status(400).json({ message: 'Invalid request data', studentIds, status });
+  if (!Array.isArray(studentIds) || studentIds.length === 0 || status === undefined) {
+    return res.status(400).json({ success: false, message: 'Missing or invalid studentIds or status' });
   }
 
   const placeholders = studentIds.map(() => '?').join(',');
@@ -103,13 +111,11 @@ router.put('/students/statuss', (req, res) => {
 
   db.query(sql, [status, ...studentIds], (err, result) => {
     if (err) {
-      console.error('Error executing SQL:', sql);
-      console.error('With params:', [status, ...studentIds]);
-      console.error('Error updating student status:', err);
-      return res.status(500).json({ message: 'Failed to update status', error: err.message });
+      console.error('Update error:', err);
+      return res.status(500).json({ success: false, message: err.message });
     }
 
-    res.json({ message: 'Status updated successfully', affectedRows: result.affectedRows });
+    res.json({ success: true, message: 'Status updated successfully' });
   });
 });
 

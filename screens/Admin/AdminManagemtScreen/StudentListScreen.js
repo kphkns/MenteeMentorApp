@@ -1,14 +1,25 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 import {
-  View, Text, FlatList, StyleSheet, ActivityIndicator,
-  Modal, TextInput, TouchableOpacity, KeyboardAvoidingView,
-  Platform, Pressable, Alert, BackHandler, RefreshControl
-} from 'react-native';
-import { Ionicons, Feather } from '@expo/vector-icons';
-import axios from 'axios';
-import RNPickerSelect from 'react-native-picker-select';
+  View,
+  Text,
+  FlatList,
+  StyleSheet,
+  ActivityIndicator,
+  Modal,
+  TextInput,
+  TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  Alert,
+  BackHandler,
+  RefreshControl,
+} from "react-native";
+import { Ionicons, Feather } from "@expo/vector-icons";
+import axios from "axios";
+import RNPickerSelect from "react-native-picker-select";
 
-const SERVER_URL = 'http://192.168.134.136:5000'; // your IP
+const SERVER_URL = "http://192.168.134.136:5000"; // your IP
 
 export default function StudentListScreen() {
   const [students, setStudents] = useState([]);
@@ -17,14 +28,14 @@ export default function StudentListScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editStudent, setEditStudent] = useState(null);
-  const [editName, setEditName] = useState('');
-  const [editEmail, setEditEmail] = useState('');
-  const [editRoll, setEditRoll] = useState('');
-  const [editBatch, setEditBatch] = useState('');
-  const [editDepartment, setEditDepartment] = useState('');
-  const [editCourse, setEditCourse] = useState('');
-  const [editFaculty, setEditFaculty] = useState('');
-  const [search, setSearch] = useState('');
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editRoll, setEditRoll] = useState("");
+  const [editBatch, setEditBatch] = useState("");
+  const [editDepartment, setEditDepartment] = useState("");
+  const [editCourse, setEditCourse] = useState("");
+  const [editFaculty, setEditFaculty] = useState("");
+  const [search, setSearch] = useState("");
   const [batches, setBatches] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [courses, setCourses] = useState([]);
@@ -43,18 +54,22 @@ export default function StudentListScreen() {
       return false; // allow normal back
     };
 
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      backAction
+    );
     return () => backHandler.remove();
   }, [selectedStudents]);
 
   useEffect(() => {
-    if (search.trim() === '') {
+    if (search.trim() === "") {
       setFilteredStudents(students);
     } else {
-      const filtered = students.filter((s) =>
-        s.Name.toLowerCase().includes(search.toLowerCase()) ||
-        s.Email.toLowerCase().includes(search.toLowerCase()) ||
-        s.Roll_no.toLowerCase().includes(search.toLowerCase())
+      const filtered = students.filter(
+        (s) =>
+          s.Name.toLowerCase().includes(search.toLowerCase()) ||
+          s.Email.toLowerCase().includes(search.toLowerCase()) ||
+          s.Roll_no.toLowerCase().includes(search.toLowerCase())
       );
       setFilteredStudents(filtered);
     }
@@ -67,7 +82,7 @@ export default function StudentListScreen() {
       setStudents(res.data);
       setFilteredStudents(res.data);
     } catch (err) {
-      Alert.alert('Error', 'Failed to fetch students');
+      Alert.alert("Error", "Failed to fetch students");
     } finally {
       setLoading(false);
     }
@@ -86,7 +101,7 @@ export default function StudentListScreen() {
       setCourses(courseRes.data);
       setFaculties(facultyRes.data);
     } catch (err) {
-      Alert.alert('Error', 'Failed to fetch dropdown data');
+      Alert.alert("Error", "Failed to fetch dropdown data");
     }
   };
 
@@ -101,63 +116,82 @@ export default function StudentListScreen() {
     setEditName(student.Name);
     setEditEmail(student.Email);
     setEditRoll(student.Roll_no);
-    setEditBatch(student.Batch || '');
-    setEditDepartment(student.Dept_ID || '');
-    setEditCourse(student.Course_ID || '');
-    setEditFaculty(student.Faculty_id || '');
+    setEditBatch(student.Batch || "");
+    setEditDepartment(student.Dept_ID || "");
+    setEditCourse(student.Course_ID || "");
+    setEditFaculty(student.Faculty_id || "");
     setModalVisible(true);
   };
 
   const saveStudentChanges = async () => {
     try {
-      await axios.put(`${SERVER_URL}/admin/students/${editStudent.Student_id}`, {
-        Name: editName,
-        Email: editEmail,
-        Roll_no: editRoll,
-        Batch: editBatch,
-        Dept_ID: editDepartment,
-        Course_ID: editCourse,
-        Faculty_id: editFaculty,
-        Password: editStudent.Password,
-      });
+      await axios.put(
+        `${SERVER_URL}/admin/students/${editStudent.Student_id}`,
+        {
+          Name: editName,
+          Email: editEmail,
+          Roll_no: editRoll,
+          Batch: editBatch,
+          Dept_ID: editDepartment,
+          Course_ID: editCourse,
+          Faculty_id: editFaculty,
+          Password: editStudent.Password,
+        }
+      );
       setModalVisible(false);
       fetchStudents();
     } catch (err) {
-      Alert.alert('Error', 'Failed to update student');
+      Alert.alert("Error", "Failed to update student");
     }
   };
 
   const handleDelete = (id, name) => {
-    Alert.alert('Delete Student', `Are you sure you want to delete "${name}"?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Yes, Delete', style: 'destructive', onPress: async () => {
-          try {
-            await axios.delete(`${SERVER_URL}/admin/students/${id}`);
-            fetchStudents();
-          } catch {
-            Alert.alert('Error', 'Failed to delete student');
-          }
-        }
-      }
-    ]);
+    Alert.alert(
+      "Delete Student",
+      `Are you sure you want to delete "${name}"?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Yes, Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await axios.delete(`${SERVER_URL}/admin/students/${id}`);
+              fetchStudents();
+            } catch {
+              Alert.alert("Error", "Failed to delete student");
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleMultipleDelete = () => {
-    Alert.alert('Delete Students', `Are you sure you want to delete ${selectedStudents.length} students?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Yes, Delete', style: 'destructive', onPress: async () => {
-          try {
-            await Promise.all(selectedStudents.map(id => axios.delete(`${SERVER_URL}/admin/students/${id}`)));
-            setSelectedStudents([]);
-            fetchStudents();
-          } catch {
-            Alert.alert('Error', 'Failed to delete students');
-          }
-        }
-      }
-    ]);
+    Alert.alert(
+      "Delete Students",
+      `Are you sure you want to delete ${selectedStudents.length} students?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Yes, Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await Promise.all(
+                selectedStudents.map((id) =>
+                  axios.delete(`${SERVER_URL}/admin/students/${id}`)
+                )
+              );
+              setSelectedStudents([]);
+              fetchStudents();
+            } catch {
+              Alert.alert("Error", "Failed to delete students");
+            }
+          },
+        },
+      ]
+    );
   };
 
   const toggleSelect = (id) => {
@@ -185,26 +219,36 @@ export default function StudentListScreen() {
         style={({ pressed }) => [
           styles.itemContainer,
           isSelected && styles.itemSelected,
-          pressed && styles.itemPressed
+          pressed && styles.itemPressed,
         ]}
       >
         <View style={styles.itemContent}>
           <View style={styles.avatarCircle}>
             <Text style={styles.avatarText}>
-              {item.Name?.charAt(0)?.toUpperCase() || 'S'}
+              {item.Name?.charAt(0)?.toUpperCase() || "S"}
             </Text>
           </View>
 
           <View style={styles.itemInfo}>
             <Text style={styles.itemName}>{item.Name}</Text>
-            <Text style={styles.itemSubInfo}>{item.Roll_no} | {item.Email}</Text>
+            <Text style={styles.itemSubInfo}>
+              {item.Roll_no} | {item.Email}
+            </Text>
           </View>
 
           {isSelected ? (
             <Ionicons name="checkmark-circle" size={28} color="#007bff" />
           ) : (
-            <TouchableOpacity onPress={() => openEditModal(item)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Feather name="edit" size={24} color="#007bff" style={{ marginLeft: 10 }} />
+            <TouchableOpacity
+              onPress={() => openEditModal(item)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Feather
+                name="edit"
+                size={24}
+                color="#007bff"
+                style={{ marginLeft: 10 }}
+              />
             </TouchableOpacity>
           )}
         </View>
@@ -218,11 +262,21 @@ export default function StudentListScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>Students</Text>
         {selectedStudents.length > 0 ? (
-          <TouchableOpacity style={styles.headerButton} onPress={handleMultipleDelete} accessibilityLabel={`Delete ${selectedStudents.length} students`}>
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={handleMultipleDelete}
+            accessibilityLabel={`Delete ${selectedStudents.length} students`}
+          >
             <Ionicons name="trash-bin" size={30} color="#d9534f" />
           </TouchableOpacity>
         ) : (
-          <TouchableOpacity style={styles.headerButton} onPress={() => Alert.alert('Add Student', 'Add student functionality')} accessibilityLabel="Add new student">
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={() =>
+              Alert.alert("Add Student", "Add student functionality")
+            }
+            accessibilityLabel="Add new student"
+          >
             <Ionicons name="add-circle-outline" size={34} color="#007bff" />
           </TouchableOpacity>
         )}
@@ -237,7 +291,11 @@ export default function StudentListScreen() {
       />
 
       {loading ? (
-        <ActivityIndicator size="large" color="#007bff" style={{ marginTop: 40 }} />
+        <ActivityIndicator
+          size="large"
+          color="#007bff"
+          style={{ marginTop: 40 }}
+        />
       ) : filteredStudents.length === 0 ? (
         <Text style={styles.emptyText}>No students found</Text>
       ) : (
@@ -251,15 +309,19 @@ export default function StudentListScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              colors={['#007bff']}
+              colors={["#007bff"]}
             />
           }
         />
       )}
 
       {/* Edit Modal */}
+      {/* Edit Modal */}
       <Modal visible={modalVisible} transparent animationType="fade">
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalBackground}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.modalBackground}
+        >
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Edit Student</Text>
 
@@ -289,47 +351,73 @@ export default function StudentListScreen() {
             />
 
             <RNPickerSelect
-              placeholder={{ label: 'Select Batch...', value: null }}
+              placeholder={{ label: "Select Batch...", value: null }}
               value={editBatch}
               onValueChange={setEditBatch}
-              items={batches.map((batch) => ({ label: batch.batch_name, value: batch.Batch_id }))}
+              items={batches.map((batch) => ({
+                label: batch.batch_name,
+                value: batch.Batch_id,
+              }))}
               style={pickerStyle}
               useNativeAndroidPickerStyle={false}
             />
 
             <RNPickerSelect
-              placeholder={{ label: 'Select Department...', value: null }}
+              placeholder={{ label: "Select Department...", value: null }}
               value={editDepartment}
-              onValueChange={setEditDepartment}
-              items={departments.map((dept) => ({ label: dept.Dept_name, value: dept.Dept_id }))}
+              onValueChange={(value) => {
+                setEditDepartment(value);
+                setEditCourse("");
+                setEditFaculty("");
+              }}
+              items={departments.map((dept) => ({
+                label: dept.Dept_name,
+                value: dept.Dept_id,
+              }))}
               style={pickerStyle}
               useNativeAndroidPickerStyle={false}
             />
 
             <RNPickerSelect
-              placeholder={{ label: 'Select Course...', value: null }}
+              placeholder={{ label: "Select Course...", value: null }}
               value={editCourse}
               onValueChange={setEditCourse}
-              items={courses.map((course) => ({ label: course.Course_name, value: course.Course_ID }))}
+              items={courses
+                .filter((c) => c.Dept_ID === editDepartment)
+                .map((course) => ({
+                  label: course.Course_name,
+                  value: course.Course_ID,
+                }))}
               style={pickerStyle}
               useNativeAndroidPickerStyle={false}
             />
 
             <RNPickerSelect
-              placeholder={{ label: 'Select Faculty...', value: null }}
+              placeholder={{ label: "Select Faculty...", value: null }}
               value={editFaculty}
               onValueChange={setEditFaculty}
-              items={faculties.map((faculty) => ({ label: faculty.Name, value: faculty.Faculty_id }))}
+              items={faculties
+                .filter((f) => f.Dept_ID === editDepartment)
+                .map((faculty) => ({
+                  label: faculty.Name,
+                  value: faculty.Faculty_id,
+                }))}
               style={pickerStyle}
               useNativeAndroidPickerStyle={false}
             />
 
             <View style={styles.modalButtons}>
-              <TouchableOpacity style={styles.saveBtn} onPress={saveStudentChanges} activeOpacity={0.8}>
-                <Text style={styles.saveText}>Save</Text>
+              <TouchableOpacity
+                style={styles.saveButton}
+                onPress={saveStudentChanges}
+              >
+                <Text style={styles.buttonText}>Save</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => setModalVisible(false)} activeOpacity={0.8}>
-                <Text style={styles.cancelText}>Cancel</Text>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => setModalVisible(false)}
+              >
+                <Text style={styles.buttonText}>Cancel</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -339,179 +427,166 @@ export default function StudentListScreen() {
   );
 }
 
-const pickerStyle = {
-  inputIOS: {
-    fontSize: 16,
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 6,
-    color: '#333',
-    paddingRight: 30,
-    marginVertical: 8,
-  },
-  inputAndroid: {
-    fontSize: 16,
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 6,
-    color: '#333',
-    paddingRight: 30,
-    marginVertical: 8,
-  },
-};
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f7f9fc',
-    paddingHorizontal: 16,
-    paddingTop: 16,
-  },
+  container: { flex: 1, backgroundColor: '#f9f9f9', padding: 10 },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#1c1c1e',
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#007bff',
   },
   headerButton: {
-    padding: 6,
+    padding: 5,
   },
   searchInput: {
     backgroundColor: '#fff',
     borderRadius: 10,
-    paddingHorizontal: 14,
+    paddingHorizontal: 15,
     paddingVertical: 10,
     fontSize: 16,
-    borderColor: '#ddd',
+    borderColor: '#ccc',
     borderWidth: 1,
-    marginBottom: 14,
-    shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 1,
+    marginBottom: 10,
   },
   itemContainer: {
     backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 14,
-    marginVertical: 6,
+    padding: 12,
+    borderRadius: 10,
+    marginVertical: 5,
     flexDirection: 'row',
     alignItems: 'center',
     elevation: 2,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
   },
   itemSelected: {
-    backgroundColor: '#e0f0ff',
+    borderColor: '#007bff',
+    borderWidth: 2,
+    backgroundColor: '#e6f0ff',
   },
   itemPressed: {
-    opacity: 0.7,
-  },
-  avatarCircle: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#007bff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 14,
-  },
-  avatarText: {
-    color: 'white',
-    fontWeight: '700',
-    fontSize: 22,
+    opacity: 0.8,
   },
   itemContent: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
   },
+  avatarCircle: {
+    backgroundColor: '#007bff',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  avatarText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
   itemInfo: {
     flex: 1,
   },
   itemName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#222',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   itemSubInfo: {
+    fontSize: 14,
     color: '#555',
     marginTop: 2,
   },
   emptyText: {
     textAlign: 'center',
-    marginTop: 60,
-    fontSize: 18,
-    color: '#888',
+    fontSize: 16,
+    color: '#999',
+    marginTop: 40,
   },
   modalBackground: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.28)',
     justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     paddingHorizontal: 20,
   },
   modalCard: {
-    backgroundColor: 'white',
-    borderRadius: 18,
+    backgroundColor: '#fff',
+    borderRadius: 15,
     padding: 20,
-    shadowColor: '#000',
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 10,
+    elevation: 5,
   },
   modalTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    marginBottom: 18,
-    color: '#1c1c1e',
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#007bff',
+    marginBottom: 15,
+    textAlign: 'center',
   },
   input: {
-    backgroundColor: '#f9f9f9',
-    borderRadius: 8,
-    paddingHorizontal: 14,
+    backgroundColor: '#f2f2f2',
+    borderRadius: 10,
+    paddingHorizontal: 15,
     paddingVertical: 10,
     fontSize: 16,
+    marginBottom: 10,
     borderColor: '#ccc',
     borderWidth: 1,
-    marginBottom: 12,
   },
   modalButtons: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
-    marginTop: 14,
+    justifyContent: 'space-between',
+    marginTop: 20,
   },
-  saveBtn: {
+  saveButton: {
     backgroundColor: '#007bff',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
+    padding: 10,
     borderRadius: 10,
-    marginLeft: 14,
+    flex: 1,
+    marginRight: 10,
   },
-  saveText: {
-    color: 'white',
-    fontWeight: '700',
-    fontSize: 16,
-  },
-  cancelBtn: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
+  cancelButton: {
+    backgroundColor: '#6c757d',
+    padding: 10,
     borderRadius: 10,
-    borderColor: '#ccc',
-    borderWidth: 1,
+    flex: 1,
   },
-  cancelText: {
-    color: '#444',
-    fontWeight: '600',
-    fontSize: 16,
+  buttonText: {
+    color: '#fff',
+    textAlign: 'center',
+    fontWeight: 'bold',
   },
 });
+
+const pickerStyle = {
+  inputIOS: {
+    fontSize: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 10,
+    color: '#000',
+    paddingRight: 30,
+    backgroundColor: '#f2f2f2',
+    marginBottom: 10,
+  },
+  inputAndroid: {
+    fontSize: 16,
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 10,
+    color: '#000',
+    paddingRight: 30,
+    backgroundColor: '#f2f2f2',
+    marginBottom: 10,
+  },
+  placeholder: {
+    color: '#999',
+  },
+};

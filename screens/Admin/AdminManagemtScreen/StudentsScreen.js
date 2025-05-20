@@ -15,7 +15,7 @@ import RNPickerSelect from 'react-native-picker-select';
 import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
 
-const SERVER_URL = 'http://192.168.134.136:5000'; 
+const SERVER_URL = 'http://192.168.134.136:5000';
 
 export default function AddStudentScreen() {
   const navigation = useNavigation();
@@ -31,7 +31,7 @@ export default function AddStudentScreen() {
 
   const [batches, setBatches] = useState([]);
   const [departments, setDepartments] = useState([]);
-  const [courses, setCourses] = useState([]);
+  const [courses, setCourses] = useState([]); // all courses
   const [faculties, setFaculties] = useState([]);
 
   const [loading, setLoading] = useState(true);
@@ -47,7 +47,7 @@ export default function AddStudentScreen() {
       .then(([batchRes, deptRes, courseRes, facultyRes]) => {
         setBatches(batchRes.data);
         setDepartments(deptRes.data);
-        setCourses(courseRes.data);
+        setCourses(courseRes.data); // set all courses here
         setFaculties(facultyRes.data);
       })
       .catch((err) => {
@@ -56,6 +56,16 @@ export default function AddStudentScreen() {
       })
       .finally(() => setLoading(false));
   }, []);
+
+  // Filter courses based on selected department
+  const filteredCourses = department
+    ? courses.filter((c) => c.Dept_ID === department)
+    : [];
+
+  // Filter faculties based on selected department
+  const filteredFaculties = department
+    ? faculties.filter((f) => f.Dept_ID === department)
+    : [];
 
   const handleAddStudent = async () => {
     if (!name || !rollNo || !email || !password || !batch || !department || !course || !faculty) {
@@ -153,7 +163,11 @@ export default function AddStudentScreen() {
           <PickerField
             label="Department"
             value={department}
-            onValueChange={setDepartment}
+            onValueChange={(val) => {
+              setDepartment(val);
+              setCourse(null); // Reset course when department changes
+              setFaculty(null); // Reset faculty when department changes
+            }}
             items={toPickerItems(departments, 'Dept_name', 'Dept_id')}
             placeholder="Select Department..."
           />
@@ -161,14 +175,14 @@ export default function AddStudentScreen() {
             label="Course"
             value={course}
             onValueChange={setCourse}
-            items={toPickerItems(courses, 'Course_name', 'Course_ID')}
+            items={toPickerItems(filteredCourses, 'Course_name', 'Course_ID')}
             placeholder="Select Course..."
           />
           <PickerField
             label="Faculty"
             value={faculty}
             onValueChange={setFaculty}
-            items={toPickerItems(faculties, 'Name', 'Faculty_id')}
+            items={toPickerItems(filteredFaculties, 'Name', 'Faculty_id')}
             placeholder="Select Faculty..."
           />
 
@@ -288,99 +302,83 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.5,
     shadowRadius: 6,
-    elevation: 5,
-  },
-  excelButtonText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 15,
-    letterSpacing: 0.5,
-  },
-  subtitle: {
-    fontSize: 15,
-    color: '#6c757d',
-    marginBottom: 24,
-    fontWeight: '500',
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#495057',
-    marginBottom: 6,
-  },
-  input: {
-    backgroundColor: '#f8f9fa',
-    borderColor: '#ced4da',
-    borderWidth: 1.5,
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    fontSize: 17,
-    color: '#212529',
-    shadowColor: 'rgba(0,0,0,0.06)',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 1,
-    shadowRadius: 6,
-  },
-  pickerWrapper: {
-    backgroundColor: '#f8f9fa',
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: '#ced4da',
-    paddingHorizontal: 12,
-    justifyContent: 'center',
-    minHeight: 54,
-    shadowColor: 'rgba(0,0,0,0.06)',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 1,
-    shadowRadius: 6,
-  },
-  button: {
-    backgroundColor: '#007bff',
-    paddingVertical: 16,
-    borderRadius: 14,
-    alignItems: 'center',
-    marginTop: 32,
-    shadowColor: '#007bff',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 7,
-  },
-  buttonDisabled: {
-    backgroundColor: '#6c757d',
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  buttonText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 18,
-    letterSpacing: 0.4,
-  },
-  secondaryButton: {
-    marginTop: 20,
-    alignItems: 'center',
-  },
-  secondaryButtonText: {
-    color: '#007bff',
-    fontWeight: '600',
-    fontSize: 16,
-    letterSpacing: 0.2,
-  },
+    elevation:5,
+},
+excelButtonText: {
+color: '#fff',
+fontWeight: '600',
+},
+subtitle: {
+fontSize: 14,
+color: '#6c757d',
+marginBottom: 20,
+},
+label: {
+fontWeight: '600',
+marginBottom: 6,
+color: '#212529',
+fontSize: 15,
+},
+input: {
+borderWidth: 1,
+borderColor: '#ced4da',
+borderRadius: 12,
+paddingVertical: 10,
+paddingHorizontal: 14,
+fontSize: 16,
+color: '#212529',
+},
+pickerWrapper: {
+borderWidth: 1,
+borderColor: '#ced4da',
+borderRadius: 12,
+backgroundColor: '#fff',
+},
+button: {
+marginTop: 12,
+backgroundColor: '#007bff',
+paddingVertical: 14,
+borderRadius: 12,
+alignItems: 'center',
+shadowColor: '#007bff',
+shadowOffset: { width: 0, height: 6 },
+shadowOpacity: 0.32,
+shadowRadius: 8,
+elevation: 12,
+},
+buttonDisabled: {
+backgroundColor: '#6c757d',
+},
+buttonText: {
+color: '#fff',
+fontWeight: '800',
+fontSize: 16,
+},
+secondaryButton: {
+marginTop: 20,
+paddingVertical: 12,
+alignItems: 'center',
+},
+secondaryButtonText: {
+fontWeight: '600',
+fontSize: 16,
+color: '#007bff',
+},
 });
 
 const pickerStyle = {
-  inputIOS: {
-    fontSize: 16,
-    paddingVertical: 14,
-    paddingHorizontal: 10,
-    color: '#212529',
-  },
-  inputAndroid: {
-    fontSize: 16,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    color: '#212529',
-  },
+inputIOS: {
+fontSize: 16,
+paddingVertical: 12,
+paddingHorizontal: 10,
+color: '#212529',
+paddingRight: 30, // to ensure the text is not behind the icon
+},
+inputAndroid: {
+fontSize: 16,
+paddingHorizontal: 10,
+paddingVertical: 8,
+color: '#212529',
+paddingRight: 30, // to ensure the text is not behind the icon
+},
 };

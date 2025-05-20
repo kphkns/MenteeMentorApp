@@ -8,24 +8,36 @@ import {
   TextInput,
   RefreshControl,
   Alert,
-  Button,
   TouchableOpacity,
+  useColorScheme,
+  Modal,
+  Platform,
 } from 'react-native';
 import axios from 'axios';
 import RNPickerSelect from 'react-native-picker-select';
 
-const SERVER_URL = 'http://192.168.134.136:5000';
+const SERVER_URL = 'http://192.168.134.136:5000'; // Replace with your IP
 
-const CustomCheckbox = ({ checked, onToggle }) => (
+const CustomCheckbox = ({ checked, onToggle, color }) => (
   <TouchableOpacity
     onPress={onToggle}
-    style={[styles.checkboxBase, checked && styles.checkboxChecked]}
+    style={[
+      styles.checkboxBase,
+      {
+        borderColor: color,
+        backgroundColor: checked ? color : 'transparent',
+      },
+    ]}
+    activeOpacity={0.8}
   >
-    {checked && <Text style={styles.checkboxTick}>✓</Text>}
+    {checked && <Text style={[styles.checkboxTick, { color: '#fff' }]}>✓</Text>}
   </TouchableOpacity>
 );
 
 export default function StudentBasicListScreen() {
+  const scheme = useColorScheme();
+  const isDark = scheme === 'dark';
+
   const [students, setStudents] = useState([]);
   const [filteredStudents, setFilteredStudents] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
@@ -41,6 +53,16 @@ export default function StudentBasicListScreen() {
   const [selectedBatch, setSelectedBatch] = useState(null);
   const [selectedDept, setSelectedDept] = useState(null);
   const [selectedCourse, setSelectedCourse] = useState(null);
+
+  // Modal state
+  const [infoModalVisible, setInfoModalVisible] = useState(false);
+  const [infoData, setInfoData] = useState(null);
+
+  const primaryColor = isDark ? '#4F8EF7' : '#3366FF';
+  const bgColor = isDark ? '#121212' : '#F5F7FA';
+  const cardBg = isDark ? '#1E1E1E' : '#FFF';
+  const textColor = isDark ? '#EEE' : '#222';
+  const subTextColor = isDark ? '#AAA' : '#666';
 
   useEffect(() => {
     fetchDropdowns();
@@ -147,7 +169,7 @@ export default function StudentBasicListScreen() {
     }
 
     try {
-      await axios.put(`${SERVER_URL}/admin/students/statuss`, {
+      await axios.put(`${SERVER_URL}/admin/update-status`, {
         studentIds: selectedIds,
         status: newStatus,
       });
@@ -158,32 +180,60 @@ export default function StudentBasicListScreen() {
     }
   };
 
+  const openInfoModal = (student) => {
+    setInfoData(student);
+    setInfoModalVisible(true);
+  };
+
+  const closeInfoModal = () => {
+    setInfoModalVisible(false);
+    setInfoData(null);
+  };
+
   const renderItem = ({ item }) => (
-    <View style={styles.item}>
+    <View style={[styles.item, { backgroundColor: cardBg, shadowColor: primaryColor }]}>
       <View style={styles.checkboxRow}>
         <CustomCheckbox
           checked={selectedIds.includes(item.Student_id)}
           onToggle={() => toggleSelect(item.Student_id)}
+          color={primaryColor}
         />
         <View style={{ flex: 1 }}>
-          <Text style={styles.name}>{item.Name}</Text>
-          <Text style={styles.subText}>Roll No: {item.Roll_no}</Text>
-          <Text style={styles.subText}>Email: {item.Email}</Text>
-          <Text style={styles.status}>{item.status === 1 ? '🟢 Active' : '🔴 Inactive'}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Text style={[styles.name, { color: textColor, flex: 1 }]} numberOfLines={1}>
+              {item.Name}
+            </Text>
+            <TouchableOpacity onPress={() => openInfoModal(item)} style={{ paddingHorizontal: 8 }}>
+              <Text style={{ fontSize: 18, color: primaryColor }}>ⓘ</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={[styles.subText, { color: subTextColor }]}>Roll No: {item.Roll_no}</Text>
+          <Text style={[styles.subText, { color: subTextColor }]} numberOfLines={1}>
+            {item.Email}
+          </Text>
+          <Text
+            style={[
+              styles.status,
+              { color: item.status === 1 ? '#28a745' : '#dc3545' },
+            ]}
+          >
+            {item.status === 1 ? '🟢 Active' : '🔴 Inactive'}
+          </Text>
         </View>
       </View>
     </View>
   );
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: bgColor }]}>
+      {/* Filters */}
       <View style={styles.filtersContainer}>
         <RNPickerSelect
           onValueChange={setSelectedBatch}
           value={selectedBatch}
           placeholder={{ label: 'Select Batch', value: null }}
           items={batches.map((b) => ({ label: b.batch_name, value: b.Batch_id }))}
-          style={pickerSelectStyles}
+          style={pickerSelectStyle(cardBg, textColor)}
           useNativeAndroidPickerStyle={false}
         />
         <RNPickerSelect
@@ -191,7 +241,7 @@ export default function StudentBasicListScreen() {
           value={selectedDept}
           placeholder={{ label: 'Select Department', value: null }}
           items={departments.map((d) => ({ label: d.Dept_name, value: d.Dept_id }))}
-          style={pickerSelectStyles}
+          style={pickerSelectStyle(cardBg, textColor)}
           useNativeAndroidPickerStyle={false}
         />
         <RNPickerSelect
@@ -199,154 +249,248 @@ export default function StudentBasicListScreen() {
           value={selectedCourse}
           placeholder={{ label: 'Select Course', value: null }}
           items={courses.map((c) => ({ label: c.Course_name, value: c.Course_ID }))}
-          style={pickerSelectStyles}
+          style={pickerSelectStyle(cardBg, textColor)}
           useNativeAndroidPickerStyle={false}
           disabled={courses.length === 0}
         />
       </View>
 
-      <TextInput
-        placeholder="Search by name, email, or roll no"
-        value={search}
-        onChangeText={setSearch}
-        style={styles.searchInput}
-      />
+      {/* Search */}
+      <View style={[styles.searchWrapper, { backgroundColor: cardBg, shadowColor: primaryColor }]}>
+        <TextInput
+          placeholder="Search by name, email, or roll no"
+          placeholderTextColor="#999"
+          value={search}
+          onChangeText={setSearch}
+          style={[styles.searchInput, { color: textColor }]}
+          clearButtonMode="while-editing"
+        />
+      </View>
 
-      <View style={styles.actionRow}>
+      {/* Actions & Selected Count */}
+      <View style={[styles.actionRow, { justifyContent: 'space-between' }]}>
         <View style={styles.checkboxRow}>
-          <CustomCheckbox checked={selectAll} onToggle={toggleSelectAll} />
-          <Text>Select All</Text>
+          <CustomCheckbox checked={selectAll} onToggle={toggleSelectAll} color={primaryColor} />
+          <Text style={{ color: textColor, marginLeft: 6, fontWeight: '600' }}>Select All</Text>
         </View>
+        <Text style={{ color: textColor, fontWeight: '600' }}>
+          Selected {selectedIds.length}
+        </Text>
         <View style={styles.buttonGroup}>
-          <View style={{ marginRight: 10 }}>
-            <Button title="Set Active" onPress={() => updateStatus(1)} />
-          </View>
-          <Button title="Set Inactive" color="red" onPress={() => updateStatus(0)} />
+          <TouchableOpacity
+            onPress={() => updateStatus(1)}
+            style={[styles.actionButton, { backgroundColor: '#28a745' }]}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.actionText}>Set Active</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => updateStatus(0)}
+            style={[styles.actionButton, { backgroundColor: '#dc3545' }]}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.actionText}>Set Inactive</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
+      {/* Student List */}
       {loading ? (
-        <ActivityIndicator size="large" color="#007bff" style={{ marginTop: 30 }} />
+        <ActivityIndicator size="large" color={primaryColor} style={{ marginTop: 40 }} />
       ) : (
         <FlatList
           data={filteredStudents}
           keyExtractor={(item) => item.Student_id.toString()}
           renderItem={renderItem}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#007bff']} />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[primaryColor]} />
           }
           ListEmptyComponent={() => (
-            <Text style={{ textAlign: 'center', marginTop: 20, color: '#666' }}>
+            <Text style={{ textAlign: 'center', marginTop: 30, color: subTextColor, fontStyle: 'italic' }}>
               No students found.
             </Text>
           )}
+          contentContainerStyle={{ paddingBottom: 40 }}
         />
       )}
+
+      {/* Info Modal */}
+      <Modal
+        visible={infoModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={closeInfoModal}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: cardBg }]}>
+            <Text style={[styles.modalTitle, { color: textColor }]}>Student Info</Text>
+            {infoData && (
+              <>
+                <Text style={[styles.modalText, { color: textColor }]}>Batch: {infoData.Batch || infoData.Batch_id || infoData.Batch_ID || 'N/A'}</Text>
+                <Text style={[styles.modalText, { color: textColor }]}>Dept_ID: {infoData.Dept_ID || infoData.Dept_id || infoData.Dept || 'N/A'}</Text>
+                <Text style={[styles.modalText, { color: textColor }]}>Course_ID: {infoData.Course_ID || infoData.Course_id || infoData.Course || 'N/A'}</Text>
+                <Text style={[styles.modalText, { color: textColor }]}>Faculty_id: {infoData.Faculty_id || infoData.Faculty || 'N/A'}</Text>
+              </>
+            )}
+            <TouchableOpacity onPress={closeInfoModal} style={styles.closeBtn}>
+              <Text style={styles.closeBtnText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
+const pickerSelectStyle = (bgColor, textColor) => ({
+  inputIOS: {
+    fontSize: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    color: textColor,
+    backgroundColor: bgColor,
+    marginBottom: 10,
+  },
+  inputAndroid: {
+    fontSize: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    color: textColor,
+    backgroundColor: bgColor,
+    marginBottom: 10,
+  },
+});
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
-    padding: 15,
+    padding: 16,
   },
   filtersContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 10,
+  },
+  searchWrapper: {
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: Platform.OS === 'ios' ? 12 : 6,
+    marginBottom: 10,
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
   },
   searchInput: {
-    backgroundColor: '#fff',
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 12,
-    borderColor: '#ccc',
-    borderWidth: 1,
+    fontSize: 16,
+    height: 40,
   },
   item: {
-    backgroundColor: '#fff',
-    padding: 15,
-    marginBottom: 10,
-    borderRadius: 10,
-    elevation: 2,
+    padding: 14,
+    marginVertical: 6,
+    borderRadius: 16,
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 4,
   },
-  name: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#222',
+   name: {
+    fontSize: 18,
+    fontWeight: '700',
   },
-  subText: {
+   subText: {
     fontSize: 14,
-    color: '#444',
-    marginTop: 2,
+    marginTop: 4,
   },
   status: {
-    marginTop: 6,
-    fontWeight: 'bold',
-    color: '#555',
+    marginTop: 8,
+    fontWeight: '700',
+    fontSize: 13,
   },
   checkboxRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   checkboxBase: {
-    width: 24,
-    height: 24,
-    borderRadius: 5,
+     width: 26,
+    height: 26,
+    borderRadius: 6,
     borderWidth: 2,
-    borderColor: '#007bff',
-    backgroundColor: 'transparent',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
-  },
-  checkboxChecked: {
-    backgroundColor: '#007bff',
+    marginRight: 16,
   },
   checkboxTick: {
-    color: 'white',
-    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  name: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  subText: {
+    fontSize: 13,
+    marginTop: 3,
+  },
+  status: {
+    fontSize: 13,
+    marginTop: 6,
+    fontWeight: '600',
   },
   actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   buttonGroup: {
     flexDirection: 'row',
+  },
+  actionButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 12,
+    marginLeft: 8,
+  },
+  actionText: {
+    color: '#fff',
+    fontWeight: '700',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
     alignItems: 'center',
   },
+  modalContent: {
+    width: '85%',
+    padding: 24,
+    borderRadius: 16,
+    elevation: 10,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 14,
+    textAlign: 'center',
+  },
+  modalText: {
+    fontSize: 16,
+    marginBottom: 10,
+  },
+  closeBtn: {
+    marginTop: 20,
+    alignSelf: 'center',
+    backgroundColor: '#3366FF',
+    paddingHorizontal: 28,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  closeBtnText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 16,
+  },
 });
-
-const pickerSelectStyles = {
-  inputIOS: {
-    fontSize: 14,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 6,
-    color: 'black',
-    paddingRight: 30,
-    marginBottom: 10,
-    minWidth: 110,
-    backgroundColor: 'white',
-  },
-  inputAndroid: {
-    fontSize: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 6,
-    color: 'black',
-    paddingRight: 30,
-    marginBottom: 10,
-    minWidth: 110,
-    backgroundColor: 'white',
-  },
-};
