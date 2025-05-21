@@ -14,7 +14,7 @@ import * as Print from "expo-print";
 import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
 
-const SERVER_URL = "http://192.168.134.136:5000";
+const SERVER_URL = "http://192.168.84.136:5000";
 
 export default function StudentMentorCardScreen() {
   const [mentorCard, setMentorCard] = useState(null);

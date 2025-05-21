@@ -15,7 +15,7 @@ import RNPickerSelect from 'react-native-picker-select';
 import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
 
-const SERVER_URL = 'http://192.168.134.136:5000';
+const SERVER_URL = 'http://192.168.84.136:5000';
 
 export default function AddStudentScreen() {
   const navigation = useNavigation();

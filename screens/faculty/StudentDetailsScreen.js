@@ -35,7 +35,7 @@ export default function StudentDetailsScreen({ route }) {
 
   const fetchMentorCard = async () => {
     try {
-      const response = await fetch(`http://192.168.134.136:5000/mentor-card/${student.Student_id}`);
+      const response = await fetch(`http://192.168.84.136:5000/mentor-card/${student.Student_id}`);
       const data = await response.json();
 
       if (response.ok) {
@@ -66,7 +66,7 @@ export default function StudentDetailsScreen({ route }) {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const response = await fetch(`http://192.168.134.136:5000/mentor-card/${student.Student_id}`, {
+      const response = await fetch(`http://192.168.84.136:5000/mentor-card/${student.Student_id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'

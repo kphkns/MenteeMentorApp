@@ -16,7 +16,7 @@ import {
 import axios from 'axios';
 import RNPickerSelect from 'react-native-picker-select';
 
-const SERVER_URL = 'http://192.168.134.136:5000'; // Replace with your IP
+const SERVER_URL = 'http://192.168.84.136:5000'; // Replace with your IP
 
 const CustomCheckbox = ({ checked, onToggle, color }) => (
   <TouchableOpacity

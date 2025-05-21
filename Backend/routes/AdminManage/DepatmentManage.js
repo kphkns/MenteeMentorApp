@@ -445,21 +445,37 @@ router.put('/students/:id', (req, res) => {
   });
 });
 
-// ✅ Delete student and associated mentor_card
+// ✅ Delete student along with their appointments and mentor card
 router.delete('/students/:id', (req, res) => {
   const { id } = req.params;
 
-  // First, delete mentor card(s) associated with the student
-  db.query('DELETE FROM mentor_card WHERE student_id = ?', [id], (err) => {
-    if (err) return res.status(500).json({ message: 'Failed to delete mentor card' });
+  // Step 1: Delete appointments
+  db.query('DELETE FROM appointment WHERE student_id = ?', [id], (err) => {
+    if (err) {
+      console.error('Failed to delete appointments:', err);
+      return res.status(500).json({ message: 'Failed to delete appointments' });
+    }
 
-    // Then, delete the student
-    db.query('DELETE FROM student WHERE Student_id = ?', [id], (err) => {
-      if (err) return res.status(500).json({ message: 'Failed to delete student' });
-      res.status(200).json({ message: 'Student and mentor card deleted successfully' });
+    // Step 2: Delete mentor card
+    db.query('DELETE FROM mentor_card WHERE student_id = ?', [id], (err) => {
+      if (err) {
+        console.error('Failed to delete mentor card:', err);
+        return res.status(500).json({ message: 'Failed to delete mentor card' });
+      }
+
+      // Step 3: Delete student
+      db.query('DELETE FROM student WHERE Student_id = ?', [id], (err) => {
+        if (err) {
+          console.error('Failed to delete student:', err);
+          return res.status(500).json({ message: 'Failed to delete student' });
+        }
+
+        res.status(200).json({ message: 'Student, appointments, and mentor card deleted successfully' });
+      });
     });
   });
 });
+
 
 //---------------------------------------------------------------------------------//----------------------------->
 
