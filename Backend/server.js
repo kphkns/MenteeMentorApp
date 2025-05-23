@@ -52,7 +52,7 @@ app.use('/', facultyProfileRoutes);
 const FacultyMentorcards = require('./routes/FacultyMentorcards');
 app.use('/', FacultyMentorcards);
 
-const mentorCardRoutes = require('./routes/mentorCard');
+const mentorCardRoutes = require('./routes/MentorCard');
 app.use('/mentor-card', mentorCardRoutes);
 
 const studentMentorCardRoute = require('./routes/StudentMentorCard');

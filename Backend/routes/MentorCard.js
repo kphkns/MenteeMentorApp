@@ -21,6 +21,31 @@ router.get('/:student_id', (req, res) => {
   });
 });
 
+// GET monitoring sessions by student ID
+router.get('/monitoring-session/:student_id', (req, res) => {
+  const { student_id } = req.params;
+
+  const query = `
+    SELECT m_id, date_of_monitoring, high_points, student_id, faculty_id, appointment_id, created_at, updated_at
+    FROM monitoring_session
+    WHERE student_id = ?
+  `;
+
+  db.query(query, [student_id], (err, results) => {
+    if (err) {
+      console.error('Error fetching monitoring sessions:', err);
+      return res.status(500).json({ message: 'Internal Server Error' });
+    }
+
+    if (results.length === 0) {
+      return res.status(404).json({ message: 'No monitoring sessions found for this student.' });
+    }
+
+    res.json(results);
+  });
+});
+
+
 // PUT update mentor card by student ID
 router.put('/:student_id', (req, res) => {
   const { student_id } = req.params;
@@ -78,5 +103,6 @@ router.put('/:student_id', (req, res) => {
     res.json({ message: 'Mentor card updated successfully.' });
   });
 });
+
 
 module.exports = router;

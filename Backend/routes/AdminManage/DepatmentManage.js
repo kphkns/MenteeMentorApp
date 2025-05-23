@@ -445,37 +445,72 @@ router.put('/students/:id', (req, res) => {
   });
 });
 
-// ✅ Delete student along with their appointments and mentor card
+// ✅ Delete student with transaction (all or nothing)
 router.delete('/students/:id', (req, res) => {
   const { id } = req.params;
 
-  // Step 1: Delete appointments
-  db.query('DELETE FROM appointment WHERE student_id = ?', [id], (err) => {
-    if (err) {
-      console.error('Failed to delete appointments:', err);
-      return res.status(500).json({ message: 'Failed to delete appointments' });
+  // Start transaction
+  db.beginTransaction((beginErr) => {
+    if (beginErr) {
+      console.error('Error starting transaction:', beginErr);
+      return res.status(500).json({ message: 'Failed to start transaction' });
     }
 
-    // Step 2: Delete mentor card
-    db.query('DELETE FROM mentor_card WHERE student_id = ?', [id], (err) => {
-      if (err) {
-        console.error('Failed to delete mentor card:', err);
-        return res.status(500).json({ message: 'Failed to delete mentor card' });
+    // Delete monitoring sessions
+    db.query('DELETE FROM monitoring_session WHERE student_id = ?', [id], (monitoringErr) => {
+      if (monitoringErr) {
+        return db.rollback(() => {
+          console.error('Failed to delete monitoring sessions:', monitoringErr);
+          res.status(500).json({ message: 'Failed to delete monitoring sessions' });
+        });
       }
 
-      // Step 3: Delete student
-      db.query('DELETE FROM student WHERE Student_id = ?', [id], (err) => {
-        if (err) {
-          console.error('Failed to delete student:', err);
-          return res.status(500).json({ message: 'Failed to delete student' });
+      // Delete appointments
+      db.query('DELETE FROM appointment WHERE student_id = ?', [id], (appointmentErr) => {
+        if (appointmentErr) {
+          return db.rollback(() => {
+            console.error('Failed to delete appointments:', appointmentErr);
+            res.status(500).json({ message: 'Failed to delete appointments' });
+          });
         }
 
-        res.status(200).json({ message: 'Student, appointments, and mentor card deleted successfully' });
+        // Delete mentor card
+        db.query('DELETE FROM mentor_card WHERE student_id = ?', [id], (mentorErr) => {
+          if (mentorErr) {
+            return db.rollback(() => {
+              console.error('Failed to delete mentor card:', mentorErr);
+              res.status(500).json({ message: 'Failed to delete mentor card' });
+            });
+          }
+
+          // Delete student
+          db.query('DELETE FROM student WHERE Student_id = ?', [id], (studentErr) => {
+            if (studentErr) {
+              return db.rollback(() => {
+                console.error('Failed to delete student:', studentErr);
+                res.status(500).json({ message: 'Failed to delete student' });
+              });
+            }
+
+            // Commit if all successful
+            db.commit((commitErr) => {
+              if (commitErr) {
+                return db.rollback(() => {
+                  console.error('Error committing transaction:', commitErr);
+                  res.status(500).json({ message: 'Failed to complete transaction' });
+                });
+              }
+
+              res.status(200).json({ 
+                message: 'Student and all related data deleted successfully' 
+              });
+            });
+          });
+        });
       });
     });
   });
 });
-
 
 //---------------------------------------------------------------------------------//----------------------------->
 

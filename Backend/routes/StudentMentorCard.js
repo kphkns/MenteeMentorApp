@@ -40,4 +40,37 @@ router.get('/student-mentor-card', verifyToken, (req, res) => {
   });
 });
 
+// GET monitoring sessions for the logged-in student
+router.get('/student-monitoring-sessions', verifyToken, (req, res) => {
+  const studentId = req.user.id;
+
+  const query = `
+    SELECT 
+      m_id, 
+      date_of_monitoring, 
+      high_points, 
+      student_id, 
+      faculty_id, 
+      appointment_id, 
+      created_at, 
+      updated_at 
+    FROM monitoring_session 
+    WHERE student_id = ?
+    ORDER BY date_of_monitoring DESC
+  `;
+
+  db.query(query, [studentId], (err, results) => {
+    if (err) {
+      console.error('Error fetching monitoring sessions:', err);
+      return res.status(500).json({ 
+        error: 'Database error',
+        message: 'Failed to fetch monitoring sessions' 
+      });
+    }
+
+    // Return empty array if no sessions found (not a 404 error)
+    res.json(results);
+  });
+});
+
 module.exports = router;

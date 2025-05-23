@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db'); // your db connection
+const db = require('../db'); //  db connection
 
 // GET /api/student/:id
 router.get('/:id', async (req, res) => {

@@ -19,7 +19,9 @@ import * as ScreenOrientation from 'expo-screen-orientation';
 export default function StudentDetailsScreen({ route }) {
   const { student } = route.params;
   const [mentorCard, setMentorCard] = useState(null);
+  const [monitoringSessions, setMonitoringSessions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('personal');
@@ -31,6 +33,7 @@ export default function StudentDetailsScreen({ route }) {
 
     enableAutoRotation();
     fetchMentorCard();
+    fetchMonitoringSessions();
 
     return () => {
       ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT);
@@ -63,6 +66,38 @@ export default function StudentDetailsScreen({ route }) {
     }
   };
 
+    const fetchMonitoringSessions = async () => {
+    setSessionsLoading(true);
+    try {
+      const response = await fetch(
+        `http://192.168.84.136:5000/mentor-card/monitoring-session/${student.Student_id}`,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      // Sort sessions by date (newest first)
+      const sortedSessions = data.sort((a, b) => 
+        new Date(b.date_of_monitoring) - new Date(a.date_of_monitoring)
+      );
+      
+      setMonitoringSessions(sortedSessions);
+    } catch (error) {
+      // Only log the error without showing alert
+      console.log('Fetch monitoring sessions:', error.message);
+      setMonitoringSessions([]);
+    } finally {
+      setSessionsLoading(false);
+    }
+  };
   const handleInputChange = (key, value) => {
     setMentorCard(prev => ({ ...prev, [key]: value }));
   };
@@ -81,7 +116,7 @@ export default function StudentDetailsScreen({ route }) {
       if (response.ok) {
         Alert.alert('Success', 'Mentor card updated successfully.');
         setIsEditing(false);
-        fetchMentorCard(); // Refresh data after save
+        fetchMentorCard();
       } else {
         Alert.alert('Error', result.message || 'Failed to update mentor card.');
       }
@@ -126,6 +161,35 @@ export default function StudentDetailsScreen({ route }) {
           );
         })}
       </View>
+    </View>
+  );
+
+  const renderMonitoringSession = (session) => (
+    <View key={session.m_id} style={styles.sessionCard}>
+      <View style={styles.sessionHeader}>
+        <Text style={styles.sessionDate}>
+          {new Date(session.date_of_monitoring).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          })}
+        </Text>
+        {/* <Text style={styles.sessionTime}>
+          {new Date(session.date_of_monitoring).toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit'
+          })}
+        </Text> */}
+      </View>
+      <Text style={styles.sessionTitle}>Discussion Points</Text>
+      <Text style={styles.sessionContent}>{session.high_points}</Text>
+      
+      {/* {session.faculty_id && (
+        <View style={styles.facultyInfo}>
+          <Ionicons name="person-outline" size={16} color="#64748b" />
+          <Text style={styles.facultyText}>Faculty ID: {session.faculty_id}</Text>
+        </View>
+      )} */}
     </View>
   );
 
@@ -208,6 +272,20 @@ export default function StudentDetailsScreen({ route }) {
               Academic
             </Text>
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.tabButton, activeTab === 'sessions' && styles.activeTab]}
+            onPress={() => setActiveTab('sessions')}
+          >
+            <Ionicons 
+              name="calendar-outline" 
+              size={20} 
+              color={activeTab === 'sessions' ? '#6366f1' : '#64748b'} 
+            />
+            <Text style={[styles.tabText, activeTab === 'sessions' && styles.activeTabText]}>
+              Sessions
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* Content */}
@@ -257,7 +335,6 @@ export default function StudentDetailsScreen({ route }) {
                 label="Email" 
                 value={student.Email} 
               />
-              {/* Address is always read-only */}
               <DetailRow 
                 icon="location" 
                 label="Address" 
@@ -323,7 +400,7 @@ export default function StudentDetailsScreen({ route }) {
               />
             </View>
           </View>
-        ) : (
+        ) : activeTab === 'academic' ? (
           <View style={styles.academicContainer}>
             <View style={styles.card}>
               <View style={styles.cardHeader}>
@@ -342,6 +419,19 @@ export default function StudentDetailsScreen({ route }) {
                 </View>
               </ScrollView>
             </View>
+          </View>
+        ) : (
+          <View style={styles.sessionsContainer}>
+            {sessionsLoading ? (
+              <ActivityIndicator size="large" color="#6366f1" style={styles.loadingIndicator} />
+            ) : monitoringSessions.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Ionicons name="calendar-outline" size={48} color="#94a3b8" />
+                <Text style={styles.emptyText}>No monitoring sessions found</Text>
+              </View>
+            ) : (
+              monitoringSessions.map(renderMonitoringSession)
+            )}
           </View>
         )}
 
@@ -367,7 +457,6 @@ export default function StudentDetailsScreen({ route }) {
   );
 }
 
-// Always use mentorCard for editable fields!
 const DetailRow = ({ icon, label, value, editable, onChangeText }) => (
   <View style={styles.detailRow}>
     <View style={styles.detailIconContainer}>
@@ -641,5 +730,73 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  sessionsContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 20,
+  },
+  sessionCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  sessionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  sessionDate: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1e293b',
+  },
+  sessionTime: {
+    fontSize: 14,
+    color: '#64748b',
+  },
+  sessionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6366f1',
+    marginBottom: 8,
+  },
+  sessionContent: {
+    fontSize: 14,
+    color: '#475569',
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  facultyInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  facultyText: {
+    fontSize: 13,
+    color: '#64748b',
+    marginLeft: 4,
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+  },
+  emptyText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#64748b',
+    textAlign: 'center',
+  },
+  loadingIndicator: {
+    marginTop: 40,
   },
 });

@@ -33,8 +33,29 @@ router.get('/appointments', verifyToken, (req, res) => {
   });
 });
 
-// Accept, cancel, complete or fail appointment by faculty
-// Accept, cancel, complete or fail appointment by faculty
+// Helper function to validate appointment time
+const isAppointmentOver = (appointment) => {
+  const dateStr = appointment.date.toISOString().split('T')[0];
+  const timeStr = appointment.time.toString().split(':').slice(0, 2).join(':');
+  const [hours, minutes] = timeStr.split(':');
+  const [year, month, day] = dateStr.split('-');
+  
+  const startDateUTC = new Date(Date.UTC(
+    parseInt(year),
+    parseInt(month) - 1,
+    parseInt(day),
+    parseInt(hours),
+    parseInt(minutes),
+    0
+  ));
+
+  const endDateTimeUTC = new Date(startDateUTC.getTime() + appointment.duration * 60000);
+  const nowUTC = new Date();
+
+  return nowUTC >= endDateTimeUTC;
+};
+
+// Accept, cancel, complete or fail appointment by faculty (callback version)
 router.patch('/appointments/:id/status', verifyToken, (req, res) => {
   const appointmentId = req.params.id;
   const { status, cancel_reason } = req.body;
@@ -45,81 +66,60 @@ router.patch('/appointments/:id/status', verifyToken, (req, res) => {
   }
 
   if (status === 'completed') {
-    const selectQuery = `
-      SELECT date, time, duration, status
-      FROM appointment
-      WHERE appointment_id = ? AND faculty_id = ?
-    `;
-
-    db.query(selectQuery, [appointmentId, facultyId], (err, results) => {
-      if (err) {
-        console.error('DB error during select:', err);
-        return res.status(500).json({ message: 'Database error' });
-      }
-
-      if (results.length === 0) {
-        return res.status(404).json({ message: 'Appointment not found or unauthorized' });
-      }
-
-      const appointment = results[0];
-      if (appointment.status !== 'accepted') {
-        return res.status(400).json({ message: 'Only accepted appointments can be completed' });
-      }
-
-      // Get the date as a string in YYYY-MM-DD format
-      const dateStr = appointment.date.toISOString().split('T')[0];
-      
-      // Get time in HH:MM format
-      const timeStr = appointment.time.toString().split(':').slice(0, 2).join(':');
-
-      // Construct start time in UTC
-      const [hours, minutes] = timeStr.split(':');
-      const [year, month, day] = dateStr.split('-');
-      
-      const startDateUTC = new Date(Date.UTC(
-        parseInt(year),
-        parseInt(month) - 1, // months are 0-indexed
-        parseInt(day),
-        parseInt(hours),
-        parseInt(minutes),
-        0
-      ));
-
-      // Calculate the end time in UTC
-      const endDateTimeUTC = new Date(startDateUTC.getTime() + appointment.duration * 60000);
-
-      const nowUTC = new Date();
-
-      if (nowUTC < endDateTimeUTC) {
-        // Format end time in UTC for the message
-        const options = {
-          timeZone: 'UTC',
-          hour12: true,
-          weekday: 'short',
-          month: 'short',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        };
-        return res.status(400).json({
-          message: `Appointment is not yet over. It ends at ${endDateTimeUTC.toLocaleString('en-US', options)} UTC`
-        });
-      }
-
-      const updateQuery = `
-        UPDATE appointment
-        SET status = 'completed', updated_at = NOW()
-        WHERE appointment_id = ? AND faculty_id = ?
-      `;
-
-      db.query(updateQuery, [appointmentId, facultyId], (updateErr) => {
-        if (updateErr) {
-          console.error('Failed to mark as completed:', updateErr);
-          return res.status(500).json({ message: 'Failed to mark appointment as completed' });
+    // Get appointment details first
+    db.query(
+      `SELECT date, time, duration, status, student_id
+       FROM appointment
+       WHERE appointment_id = ? AND faculty_id = ?`,
+      [appointmentId, facultyId],
+      (err, results) => {
+        if (err) {
+          console.error('DB error during select:', err);
+          return res.status(500).json({ message: 'Database error' });
         }
-        return res.json({ message: 'Appointment marked as completed' });
-      });
-    });
+
+        if (results.length === 0) {
+          return res.status(404).json({ message: 'Appointment not found or unauthorized' });
+        }
+
+        const appointment = results[0];
+        if (appointment.status !== 'accepted') {
+          return res.status(400).json({ message: 'Only accepted appointments can be completed' });
+        }
+
+        // Check if appointment time has passed
+        if (!isAppointmentOver(appointment)) {
+          const options = {
+            timeZone: 'UTC',
+            hour12: true,
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          };
+          const endDateTimeUTC = new Date(new Date(appointment.date).getTime() + appointment.duration * 60000);
+          return res.status(400).json({
+            message: `Appointment is not yet over. It ends at ${endDateTimeUTC.toLocaleString('en-US', options)} UTC`
+          });
+        }
+
+        // Update appointment status
+        db.query(
+          `UPDATE appointment
+           SET status = 'completed', updated_at = NOW()
+           WHERE appointment_id = ? AND faculty_id = ?`,
+          [appointmentId, facultyId],
+          (updateErr) => {
+            if (updateErr) {
+              console.error('Failed to mark as completed:', updateErr);
+              return res.status(500).json({ message: 'Failed to mark appointment as completed' });
+            }
+            return res.json({ message: 'Appointment marked as completed' });
+          }
+        );
+      }
+    );
   } else {
     // Accept, Cancel, or Fail logic
     let updateQuery = `
@@ -142,6 +142,120 @@ router.patch('/appointments/:id/status', verifyToken, (req, res) => {
       }
       return res.json({ message: `Appointment status updated to ${status}` });
     });
+  }
+});
+
+// Complete appointment with monitoring session details (simplified version without transactions)
+router.patch('/appointments/:id/complete', verifyToken, (req, res) => {
+  const appointmentId = req.params.id;
+  const { high_points } = req.body;
+  const facultyId = req.user.id;
+
+  if (!high_points || !high_points.trim()) {
+    return res.status(400).json({ message: 'High points are required' });
+  }
+
+  // 1. Verify and get appointment details
+  db.query(
+    `SELECT a.date, a.time, a.duration, a.status, a.student_id 
+     FROM appointment a 
+     WHERE a.appointment_id = ? AND a.faculty_id = ?`,
+    [appointmentId, facultyId],
+    (err, appointments) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ message: 'Database error' });
+      }
+
+      if (appointments.length === 0) {
+        return res.status(404).json({ message: 'Appointment not found or unauthorized' });
+      }
+
+      const appointment = appointments[0];
+      if (appointment.status !== 'accepted') {
+        return res.status(400).json({ message: 'Only accepted appointments can be completed' });
+      }
+
+      // 2. Check if appointment time has passed
+      if (!isAppointmentOver(appointment)) {
+        const options = {
+          timeZone: 'UTC',
+          hour12: true,
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        };
+        const endDateTimeUTC = new Date(new Date(appointment.date).getTime() + appointment.duration * 60000);
+        return res.status(400).json({
+          message: `Appointment is not yet over. It ends at ${endDateTimeUTC.toLocaleString('en-US', options)} UTC`
+        });
+      }
+
+      // 3. Update appointment status
+      db.query(
+        `UPDATE appointment 
+         SET status = 'completed', updated_at = NOW() 
+         WHERE appointment_id = ? AND faculty_id = ?`,
+        [appointmentId, facultyId],
+        (updateErr) => {
+          if (updateErr) {
+            console.error('Error updating appointment:', updateErr);
+            return res.status(500).json({ message: 'Failed to update appointment' });
+          }
+
+          // 4. Create monitoring session record
+          db.query(
+            `INSERT INTO monitoring_session 
+             (date_of_monitoring, high_points, student_id, faculty_id, appointment_id) 
+             VALUES (?, ?, ?, ?, ?)`,
+            [
+              appointment.date,
+              high_points,
+              appointment.student_id,
+              facultyId,
+              appointmentId
+            ],
+            (insertErr, result) => {
+              if (insertErr) {
+                console.error('Error creating monitoring session:', insertErr);
+                return res.status(500).json({ message: 'Failed to create monitoring session' });
+              }
+
+              return res.json({ 
+                message: 'Appointment completed successfully',
+                monitoring_id: result.insertId
+              });
+            }
+          );
+        }
+      );
+    }
+  );
+});
+
+// Get monitoring sessions for faculty
+router.get('/monitoring-sessions', verifyToken, async (req, res) => {
+  const facultyId = req.user.id;
+
+  try {
+    const [sessions] = await db.query(
+      `SELECT ms.m_id, ms.date_of_monitoring, ms.high_points, 
+              ms.created_at, s.student_name, s.email as student_email,
+              a.appointment_id, a.purpose as appointment_purpose
+       FROM monitoring_session ms
+       JOIN student s ON ms.student_id = s.student_id
+       LEFT JOIN appointment a ON ms.appointment_id = a.appointment_id
+       WHERE ms.faculty_id = ?
+       ORDER BY ms.date_of_monitoring DESC`,
+      [facultyId]
+    );
+
+    return res.json(sessions);
+  } catch (err) {
+    console.error('Error fetching monitoring sessions:', err);
+    return res.status(500).json({ message: 'Failed to fetch monitoring sessions' });
   }
 });
 
@@ -244,7 +358,7 @@ router.patch('/appointments/:id/reschedule', verifyToken, (req, res) => {
   });
 });
 
-// Get appointment history (cancelled or completed) for faculty
+
 // Get appointment history (cancelled, completed, or failed) for faculty
 router.get('/appointments/history', verifyToken, (req, res) => {
   const { id, userType } = req.user;
