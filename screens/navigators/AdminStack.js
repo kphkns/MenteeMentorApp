@@ -1,8 +1,8 @@
-// navigators/AdminStack.js
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import { Platform } from 'react-native';
 
 import AdminHome from '../Admin/AdminHome';
 import AdminProfile from '../Admin/AdminProfile';
@@ -17,7 +17,7 @@ import StudentsScreen from '../Admin/AdminManagemtScreen/StudentsScreen';
 import FacultyListScreen from '../Admin/AdminManagemtScreen/FacultyListScreen';
 import StudentListScreen from '../Admin/AdminManagemtScreen/StudentListScreen';
 import ExcelUploadScreen from '../Admin/AdminManagemtScreen/UploadExcelScreen';
-import SessionManagement from '../Admin/AdminManagemtScreen/SessionManagement'
+import SessionManagement from '../Admin/AdminManagemtScreen/SessionManagement';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -26,49 +26,56 @@ function AdminTabs() {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
-        tabBarIcon: ({ color, size }) => {
+        tabBarIcon: ({ focused, color, size }) => {
           let iconName;
-          if (route.name === 'Home') iconName = 'home-outline';
-          else if (route.name === 'Management') iconName = 'settings-outline';
-          else if (route.name === 'Profile') iconName = 'person-outline';
-
+          if (route.name === 'Home') iconName = focused ? 'home' : 'home-outline';
+          else if (route.name === 'Management') iconName = focused ? 'settings' : 'settings-outline';
+          else if (route.name === 'Profile') iconName = focused ? 'person' : 'person-outline';
           return <Ionicons name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: '#007bff',
-        tabBarInactiveTintColor: 'black',
+        tabBarActiveTintColor: '#4F46E5',
+        tabBarInactiveTintColor: '#6B7280',
         tabBarStyle: {
-          backgroundColor: '#fff',
-          borderTopLeftRadius: 20,
-          borderTopRightRadius: 20,
-          height: 60,
+          backgroundColor: '#FFFFFF',
+          borderTopLeftRadius: 24,
+          borderTopRightRadius: 24,
+          height: Platform.OS === 'ios' ? 90 : 70,
+          paddingBottom: Platform.OS === 'ios' ? 25 : 10,
           shadowColor: '#000',
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 6,
-          elevation: 8,
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.08,
+          shadowRadius: 12,
+          elevation: 10,
+          borderTopWidth: 0,
+          position: 'absolute',
         },
         tabBarLabelStyle: {
           fontSize: 12,
-          fontWeight: '600',
-          marginBottom: 4,
+          fontWeight: "600",
+          marginBottom: Platform.OS === 'ios' ? 0 : 4,
+          fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
         },
         headerStyle: {
-          backgroundColor: '#f2f6ff',
+          backgroundColor: "#f2f6ff",
           elevation: 0,
           shadowOpacity: 0,
           borderBottomWidth: 0,
         },
         headerTitleStyle: {
-          fontSize: 18,
-          fontWeight: 'bold',
+          fontWeight: "600",
+          fontSize: 20,
+          color: "#111827",
+          fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
         },
-        headerTintColor: 'black',
+        headerTintColor: "#4F46E5",
+        headerTitleAlign: 'center',
+        headerShadowVisible: false,
         headerShown: true,
       })}
     >
-      <Tab.Screen name="Home" component={AdminHome} />
-      <Tab.Screen name="Management" component={AdminManagement} />
-      <Tab.Screen name="Profile" component={AdminProfile} />
+      <Tab.Screen name="Home" component={AdminHome} options={{ headerShown: false }} />
+      <Tab.Screen name="Management" component={AdminManagement} options={{ title: 'Management' }} />
+      <Tab.Screen name="Profile" component={AdminProfile} options={{ title: 'Profile' }} />
     </Tab.Navigator>
   );
 }
@@ -79,16 +86,23 @@ export default function AdminStack() {
       screenOptions={{
         headerShown: true,
         headerStyle: {
-          backgroundColor: '#f2f6ff',
-          elevation: 0, // Android shadow
-          shadowOpacity: 0, // iOS shadow
-          borderBottomWidth: 0, // Removes bottom border
+          backgroundColor: "#f2f6ff",
+          elevation: 0,
+          shadowOpacity: 0,
+          borderBottomWidth: 0,
         },
         headerTitleStyle: {
-          fontWeight: 'bold',
-          fontSize: 18,
+          fontWeight: "600",
+          fontSize: 20,
+          color: "#111827",
+          fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
         },
-        headerTintColor: 'black',
+        headerTintColor: "#4F46E5",
+        headerTitleAlign: 'center',
+        headerShadowVisible: false,
+        contentStyle: {
+          backgroundColor: "#F8FAFC",
+        },
       }}
     >
       <Stack.Screen
@@ -105,7 +119,7 @@ export default function AdminStack() {
       <Stack.Screen name="FacultyListScreen" component={FacultyListScreen} options={{ title: 'Faculty List' }} />
       <Stack.Screen name="StudentListScreen" component={StudentListScreen} options={{ title: 'Student List' }} />
       <Stack.Screen name="UploadExcelScreen" component={ExcelUploadScreen} options={{ title: 'Upload via Excel' }} />
-      <Stack.Screen name="SESSION MANAGEMENT" component={SessionManagement} options={{ title: 'SessionManagement' }} />
+      <Stack.Screen name="SESSION MANAGEMENT" component={SessionManagement} options={{ title: 'Session Management' }} />
     </Stack.Navigator>
   );
 }

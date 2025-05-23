@@ -2,10 +2,10 @@ import React, { useEffect, useState, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   FlatList, Alert, StyleSheet, ActivityIndicator,
-  KeyboardAvoidingView, Platform, BackHandler, Modal, RefreshControl
+  KeyboardAvoidingView, Platform, BackHandler, Modal, RefreshControl, Animated
 } from 'react-native';
 import axios from 'axios';
-import { Ionicons, Feather } from '@expo/vector-icons';
+import { Ionicons, Feather, MaterialIcons } from '@expo/vector-icons';
 
 const SERVER_URL = 'http://192.168.84.136:5000';
 
@@ -21,9 +21,15 @@ export default function AddBatchesScreen() {
   const [isSelectionMode, setIsSelectionMode] = useState(false);
 
   const flatListRef = useRef();
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     fetchBatches();
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true,
+    }).start();
   }, []);
 
   useEffect(() => {
@@ -41,8 +47,11 @@ export default function AddBatchesScreen() {
 
   const fetchBatches = async () => {
     try {
+      setLoading(true);
       const res = await axios.get(`${SERVER_URL}/admin/batches`);
-      setBatches(res.data);
+      // Sort batches by year descending (newest first)
+      const sorted = res.data.sort((a, b) => b.batch_name.localeCompare(a.batch_name));
+      setBatches(sorted);
     } catch {
       Alert.alert('Error', 'Failed to fetch batches');
     } finally {
@@ -104,11 +113,9 @@ export default function AddBatchesScreen() {
   };
 
   const toggleSelect = (id) => {
-    if (selectedBatches.includes(id)) {
-      setSelectedBatches(selectedBatches.filter(item => item !== id));
-    } else {
-      setSelectedBatches([...selectedBatches, id]);
-    }
+    setSelectedBatches(prev =>
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
   };
 
   const filteredBatches = batches.filter(batch =>
@@ -118,35 +125,61 @@ export default function AddBatchesScreen() {
   const renderItem = ({ item }) => {
     const isSelected = selectedBatches.includes(item.Batch_id);
     return (
-      <TouchableOpacity
-        onLongPress={() => {
-          setIsSelectionMode(true);
-          toggleSelect(item.Batch_id);
-        }}
-        onPress={() => {
-          if (isSelectionMode) toggleSelect(item.Batch_id);
-        }}
-        style={[styles.card, isSelected && styles.selectedCard]}
-      >
-        <Text style={styles.cardTitle}>{item.batch_name}</Text>
-        {!isSelectionMode && (
-          <TouchableOpacity
-            style={styles.editBtn}
-            onPress={() => {
-              setBatchName(item.batch_name);
-              setEditingBatch(item);
-              setModalVisible(true);
-            }}>
-            <Feather name="edit-3" size={18} color="#4e73df" />
-          </TouchableOpacity>
-        )}
-      </TouchableOpacity>
+      <Animated.View style={{ opacity: fadeAnim }}>
+        <TouchableOpacity
+          onLongPress={() => {
+            setIsSelectionMode(true);
+            toggleSelect(item.Batch_id);
+          }}
+          onPress={() => {
+            if (isSelectionMode) toggleSelect(item.Batch_id);
+          }}
+          style={[
+            styles.card,
+            isSelected && styles.selectedCard,
+            { transform: [{ scale: fadeAnim }] }
+          ]}
+          activeOpacity={0.8}
+        >
+          <View style={styles.itemRow}>
+            <View style={styles.itemContent}>
+              {isSelectionMode && (
+                <View style={[
+                  styles.selectionIndicator,
+                  isSelected && styles.selectedIndicator
+                ]}>
+                  {isSelected && <Ionicons name="checkmark" size={16} color="#fff" />}
+                </View>
+              )}
+              <MaterialIcons
+                name="calendar-today"
+                size={24}
+                color={isSelected ? "#6366f1" : "#94a3b8"}
+                style={styles.batchIcon}
+              />
+              <Text style={styles.cardTitle}>{item.batch_name}</Text>
+            </View>
+            {!isSelectionMode && (
+              <TouchableOpacity
+                style={styles.editBtn}
+                onPress={() => {
+                  setBatchName(item.batch_name);
+                  setEditingBatch(item);
+                  setModalVisible(true);
+                }}>
+                <Feather name="edit-3" size={18} color="#4e73df" />
+              </TouchableOpacity>
+            )}
+          </View>
+        </TouchableOpacity>
+      </Animated.View>
     );
   };
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.wrapper}>
       <View style={styles.container}>
+        {/* Header */}
         <View style={styles.headerRow}>
           <Text style={styles.header}>Batches</Text>
           {isSelectionMode ? (
@@ -163,18 +196,41 @@ export default function AddBatchesScreen() {
           )}
         </View>
 
-        <TextInput
-          placeholder="Search batches..."
-          placeholderTextColor="#888"
-          value={search}
-          onChangeText={setSearch}
-          style={styles.searchInput}
-        />
+        {/* Search Bar */}
+        <View style={styles.searchContainer}>
+          <Ionicons name="search" size={20} color="#94a3b8" style={styles.searchIcon} />
+          <TextInput
+            placeholder="Search batches..."
+            placeholderTextColor="#94a3b8"
+            value={search}
+            onChangeText={setSearch}
+            style={styles.searchInput}
+          />
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => setSearch('')}>
+              <Ionicons name="close-circle" size={20} color="#94a3b8" />
+            </TouchableOpacity>
+          )}
+        </View>
 
         {loading ? (
           <ActivityIndicator size="large" color="#4e73df" style={{ marginTop: 20 }} />
         ) : filteredBatches.length === 0 ? (
-          <Text style={styles.emptyMessage}>No batches found.</Text>
+          <View style={styles.emptyContainer}>
+            <Ionicons name="calendar-outline" size={64} color="#c7d2fe" />
+            <Text style={styles.emptyTitle}>No batches found</Text>
+            <Text style={styles.emptySubtext}>
+              {search.length > 0 ? 'Try a different search' : 'Add your first batch'}
+            </Text>
+            {search.length === 0 && (
+              <TouchableOpacity
+                style={styles.addFirstButton}
+                onPress={() => setModalVisible(true)}
+              >
+                <Text style={styles.addFirstButtonText}>Add Batch</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         ) : (
           <FlatList
             ref={flatListRef}
@@ -193,14 +249,17 @@ export default function AddBatchesScreen() {
               <Text style={styles.modalTitle}>
                 {editingBatch ? `Edit: ${editingBatch.batch_name}` : 'Add Batch'}
               </Text>
-              <TextInput
-                placeholder="Enter batch year"
-                value={batchName}
-                onChangeText={setBatchName}
-                style={styles.input}
-                keyboardType="numeric"
-                maxLength={4}
-              />
+              <View style={styles.inputContainer}>
+                <MaterialIcons name="calendar-today" size={20} color="#6366f1" style={styles.inputIcon} />
+                <TextInput
+                  placeholder="Enter batch year"
+                  value={batchName}
+                  onChangeText={setBatchName}
+                  style={styles.modalInput}
+                  keyboardType="numeric"
+                  maxLength={4}
+                />
+              </View>
               <View style={styles.modalActions}>
                 <TouchableOpacity style={styles.saveBtn} onPress={handleAddOrUpdate}>
                   <Text style={styles.saveText}>{editingBatch ? 'Update' : 'Add'}</Text>
@@ -225,8 +284,10 @@ export default function AddBatchesScreen() {
 
 const styles = StyleSheet.create({
   wrapper: { flex: 1, backgroundColor: '#f2f6fc' },
-  container: { padding: 20 },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  container: { flex: 1, padding: 20 },
+  headerRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16
+  },
   header: { fontSize: 24, fontWeight: 'bold', color: '#4e73df' },
   addBtn: {
     backgroundColor: '#4e73df', padding: 10, borderRadius: 30,
@@ -238,21 +299,103 @@ const styles = StyleSheet.create({
   },
   selectionHeader: { flexDirection: 'row', alignItems: 'center' },
   selectedCount: { marginRight: 10, fontWeight: '600', color: '#e74a3b', fontSize: 16 },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 16,
+    shadowColor: '#6366f1',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  searchIcon: {
+    marginRight: 12,
+  },
   searchInput: {
-    backgroundColor: '#fff', padding: 12, borderRadius: 10,
-    borderWidth: 1, borderColor: '#ced4da', marginBottom: 16
+    flex: 1,
+    fontSize: 16,
+    color: '#1e293b',
+    fontWeight: '500',
   },
   card: {
-    backgroundColor: '#fff', borderRadius: 12, padding: 15, marginBottom: 12,
-    borderWidth: 1, borderColor: '#dee2e6', flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', elevation: 2
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#dee2e6',
+    flexDirection: 'row',
+    alignItems: 'center',
+    elevation: 2,
   },
   selectedCard: {
     backgroundColor: '#dbeafe', borderColor: '#60a5fa'
   },
+  itemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flex: 1,
+    width: '100%',
+  },
+  itemContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  selectionIndicator: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    marginRight: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  selectedIndicator: {
+    backgroundColor: '#6366f1',
+    borderColor: '#6366f1',
+  },
+  batchIcon: {
+    marginRight: 12,
+  },
   cardTitle: { fontSize: 16, fontWeight: '600', color: '#2c3e50' },
-  editBtn: { padding: 6, borderRadius: 8 },
-  emptyMessage: { textAlign: 'center', color: '#999', fontSize: 16, marginTop: 40 },
+  editBtn: { padding: 8, borderRadius: 8 },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#334155',
+    marginTop: 16,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#64748b',
+    marginTop: 8,
+  },
+  addFirstButton: {
+    marginTop: 24,
+    backgroundColor: '#6366f1',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  addFirstButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
   modalOverlay: {
     flex: 1, backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center', alignItems: 'center'
@@ -264,9 +407,25 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18, fontWeight: 'bold', color: '#4e73df', marginBottom: 15
   },
-  input: {
-    backgroundColor: '#f9f9f9', padding: 10, borderRadius: 10,
-    borderWidth: 1, borderColor: '#ccc', marginBottom: 15
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  inputIcon: {
+    marginRight: 12,
+  },
+  modalInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#1e293b',
+    fontWeight: '500',
   },
   modalActions: {
     flexDirection: 'row', justifyContent: 'space-between'

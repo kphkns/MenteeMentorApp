@@ -8,9 +8,12 @@ import {
   TextInput,
   TouchableOpacity,
   Platform,
-  KeyboardAvoidingView
+  KeyboardAvoidingView,
+  ScrollView,
+  Switch
 } from 'react-native';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
 import * as ScreenOrientation from 'expo-screen-orientation';
 
 export default function StudentDetailsScreen({ route }) {
@@ -19,6 +22,7 @@ export default function StudentDetailsScreen({ route }) {
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState('personal');
 
   useEffect(() => {
     const enableAutoRotation = async () => {
@@ -77,6 +81,7 @@ export default function StudentDetailsScreen({ route }) {
       if (response.ok) {
         Alert.alert('Success', 'Mentor card updated successfully.');
         setIsEditing(false);
+        fetchMentorCard(); // Refresh data after save
       } else {
         Alert.alert('Error', result.message || 'Failed to update mentor card.');
       }
@@ -89,226 +94,552 @@ export default function StudentDetailsScreen({ route }) {
   };
 
   const renderSemesterHeader = () => (
-    <View style={styles.semesterRow}>
-      <Text style={styles.semesterLabel}></Text>
-      {[...Array(10)].map((_, i) => (
-        <Text key={i} style={styles.semesterValue}>S{i + 1}</Text>
-      ))}
+    <View style={styles.semesterHeader}>
+      <Text style={styles.semesterHeaderLabel}>Semester</Text>
+      <View style={styles.semesterHeaderRow}>
+        {[...Array(10)].map((_, i) => (
+          <Text key={i} style={styles.semesterHeaderValue}>S{i + 1}</Text>
+        ))}
+      </View>
     </View>
   );
 
-  const renderSemesterData = (label, keyPrefix) => (
+  const renderSemesterData = (label, keyPrefix, iconName) => (
     <View style={styles.semesterRow}>
-      <Text style={styles.semesterLabel}>{label}</Text>
-      {[...Array(10)].map((_, i) => {
-        const key = `${keyPrefix}${i + 1}`;
-        return isEditing ? (
-          <TextInput
-            key={i}
-            style={styles.semesterInput}
-            value={mentorCard?.[key] ?? ''}
-            onChangeText={(value) => handleInputChange(key, value)}
-          />
-        ) : (
-          <Text key={i} style={styles.semesterValue}>{mentorCard?.[key] ?? '-'}</Text>
-        );
-      })}
+      <View style={styles.semesterLabelContainer}>
+        <MaterialIcons name={iconName} size={18} color="#6366f1" style={styles.semesterIcon} />
+        <Text style={styles.semesterLabel}>{label}</Text>
+      </View>
+      <View style={styles.semesterValuesContainer}>
+        {[...Array(10)].map((_, i) => {
+          const key = `${keyPrefix}${i + 1}`;
+          return isEditing ? (
+            <TextInput
+              key={i}
+              style={styles.semesterInput}
+              value={mentorCard?.[key] ?? ''}
+              onChangeText={(value) => handleInputChange(key, value)}
+              keyboardType={keyPrefix.includes('gpa') ? 'numeric' : 'default'}
+            />
+          ) : (
+            <Text key={i} style={styles.semesterValue}>{mentorCard?.[key] || '-'}</Text>
+          );
+        })}
+      </View>
     </View>
   );
 
-  if (loading) return <ActivityIndicator size="large" style={{ marginTop: 30 }} />;
-  if (!mentorCard) return <Text style={{ textAlign: 'center', marginTop: 30 }}>No mentor card data available.</Text>;
+  if (loading) {
+    return (
+      <View style={styles.loaderContainer}>
+        <ActivityIndicator size="large" color="#6366f1" />
+        <Text style={styles.loadingText}>Loading student details...</Text>
+      </View>
+    );
+  }
 
-return (
-  <KeyboardAvoidingView
-    style={{ flex: 1 }}
-    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
-  >
-    <KeyboardAwareScrollView
-      contentContainerStyle={styles.scrollContainer}
-      enableOnAndroid={true}
-      extraScrollHeight={100}
-      keyboardShouldPersistTaps="handled"
-    >
-      <View style={styles.headerRow}>
-        <View>
-          <Text style={styles.title}>Student Mentoring Record Card</Text>
-          <Text style={styles.subtitle}>(To be retained by the Mentor)</Text>
-        </View>
-        <TouchableOpacity onPress={() => setIsEditing(!isEditing)} style={styles.editBtn}>
-          <Text style={{ color: 'white' }}>{isEditing ? 'Cancel' : 'Edit'}</Text>
+  if (!mentorCard) {
+    return (
+      <View style={styles.errorContainer}>
+        <MaterialIcons name="error-outline" size={48} color="#ef4444" />
+        <Text style={styles.errorText}>No mentor card data available</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={fetchMentorCard}>
+          <Text style={styles.retryButtonText}>Try Again</Text>
         </TouchableOpacity>
       </View>
+    );
+  }
 
-      {isEditing && (
-        <TouchableOpacity onPress={handleSave} style={styles.saveBtn} disabled={isSaving}>
-          <Text style={{ color: 'white' }}>{isSaving ? 'Saving...' : 'Save'}</Text>
-        </TouchableOpacity>
-      )}
+  return (
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+    >
+      <ScrollView contentContainerStyle={styles.container}>
+        {/* Header */}
+        <LinearGradient
+          colors={['#6366f1', '#818cf8']}
+          style={styles.header}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+        >
+          <Text style={styles.headerTitle}>{student.Name}</Text>
+          <Text style={styles.headerSubtitle}>{student.Roll_no} • {student.Course_name}</Text>
+        </LinearGradient>
 
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Part A: Personal Details</Text>
-          {/* Reuse your existing Personal Info UI here (unchanged) */}
-          <View style={styles.row}>
-            <Text style={styles.label}>Name of the Student:</Text>
-            <Text style={styles.value}>{student.Name || '-'}</Text>
-            <Text style={styles.label}>Roll No. of Student:</Text>
-            <Text style={styles.value}>{student.Roll_no || '-'}</Text>
-          </View>
-          <View style={styles.row}>
-            <Text style={styles.label}>Programme of study:</Text>
-            <Text style={styles.value}>{student.Course_name || '-'}</Text>
-            <Text style={styles.label}>Name of mentor:</Text>
-            <Text style={styles.value}>{student.MentorName || '-'}</Text>
-          </View>
-          <View style={styles.row}>
-            <Text style={styles.label}>Batch:</Text>
-            <Text style={styles.value}>{student.batch_name || '-'}</Text>
-            <Text style={styles.label}>Phone:</Text>
-            <Text style={styles.value}>{student.mobile_no || '-'}</Text>
-          </View>
-          <View style={styles.row}>
-            <Text style={styles.label}>Email:</Text>
-            <Text style={styles.value}>{student.Email || '-'}</Text>
-            <Text style={styles.label}>Address:</Text>
-            <Text style={styles.value}>{student.Address || '-'}</Text>
-          </View>
-          <View style={styles.row}>
-            <Text style={styles.label}>Health/Other Issues:</Text>
-            {isEditing ? (
-              <TextInput
-                style={styles.input}
-                value={mentorCard.any_helthissue}
-                onChangeText={(value) => handleInputChange('any_helthissue', value)}
+        {/* Edit Toggle */}
+        <View style={styles.editToggleContainer}>
+          <Text style={styles.editToggleText}>Edit Mode</Text>
+          <Switch
+            value={isEditing}
+            onValueChange={setIsEditing}
+            trackColor={{ false: '#e2e8f0', true: '#c7d2fe' }}
+            thumbColor={isEditing ? '#6366f1' : '#f1f5f9'}
+          />
+        </View>
+
+        {/* Tabs */}
+        <View style={styles.tabContainer}>
+          <TouchableOpacity
+            style={[styles.tabButton, activeTab === 'personal' && styles.activeTab]}
+            onPress={() => setActiveTab('personal')}
+          >
+            <Ionicons 
+              name="person-outline" 
+              size={20} 
+              color={activeTab === 'personal' ? '#6366f1' : '#64748b'} 
+            />
+            <Text style={[styles.tabText, activeTab === 'personal' && styles.activeTabText]}>
+              Personal
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[styles.tabButton, activeTab === 'academic' && styles.activeTab]}
+            onPress={() => setActiveTab('academic')}
+          >
+            <Ionicons 
+              name="school-outline" 
+              size={20} 
+              color={activeTab === 'academic' ? '#6366f1' : '#64748b'} 
+            />
+            <Text style={[styles.tabText, activeTab === 'academic' && styles.activeTabText]}>
+              Academic
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Content */}
+        {activeTab === 'personal' ? (
+          <View style={styles.personalDetailsContainer}>
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <Ionicons name="person-circle-outline" size={24} color="#6366f1" />
+                <Text style={styles.cardTitle}>Student Information</Text>
+              </View>
+              
+              <DetailRow 
+                icon="pricetag-outline" 
+                label="Roll Number" 
+                value={student.Roll_no} 
               />
-            ) : (
-              <Text style={styles.value}>{mentorCard.any_helthissue || '-'}</Text>
-            )}
-            <Text style={styles.label}>Parents' Mobile:</Text>
-            {isEditing ? (
-              <TextInput
-                style={styles.input}
-                value={mentorCard.mobile_no_of_parents}
-                onChangeText={(value) => handleInputChange('mobile_no_of_parents', value)}
+              <DetailRow 
+                icon="school" 
+                label="Program" 
+                value={student.Course_name} 
               />
-            ) : (
-              <Text style={styles.value}>{mentorCard.mobile_no_of_parents || '-'}</Text>
-            )}
-          </View>
-          <View style={styles.row}>
-            <Text style={styles.label}>Name of local guardian:</Text>
-            {isEditing ? (
-              <TextInput
-                style={styles.input}
-                value={mentorCard.name_of_localgurdian}
-                onChangeText={(value) => handleInputChange('name_of_localgurdian', value)}
+              <DetailRow 
+                icon="people" 
+                label="Mentor" 
+                value={student.MentorName} 
               />
-            ) : (
-              <Text style={styles.value}>{mentorCard.name_of_localgurdian || '-'}</Text>
-            )}
-            <Text style={styles.label}>Guardian Mobile:</Text>
-            {isEditing ? (
-              <TextInput
-                style={styles.input}
-                value={mentorCard.moble_no_of_localgurdent}
-                onChangeText={(value) => handleInputChange('moble_no_of_localgurdent', value)}
+              <DetailRow 
+                icon="calendar" 
+                label="Batch" 
+                value={student.batch_name} 
               />
-            ) : (
-              <Text style={styles.value}>{mentorCard.moble_no_of_localgurdent || '-'}</Text>
-            )}
-          </View>
-          <View style={styles.row}>
-            <Text style={styles.label}>Name of parents(s):</Text>
-            {isEditing ? (
-              <TextInput
-                style={styles.input}
+            </View>
+
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <Ionicons name="call-outline" size={24} color="#6366f1" />
+                <Text style={styles.cardTitle}>Contact Information</Text>
+              </View>
+              
+              <DetailRow 
+                icon="phone-portrait" 
+                label="Phone" 
+                value={student.mobile_no} 
+              />
+              <DetailRow 
+                icon="mail" 
+                label="Email" 
+                value={student.Email} 
+              />
+              {/* Address is always read-only */}
+              <DetailRow 
+                icon="location" 
+                label="Address" 
+                value={mentorCard.present_address}
+              />
+            </View>
+
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <Ionicons name="people-outline" size={24} color="#6366f1" />
+                <Text style={styles.cardTitle}>Family Information</Text>
+              </View>
+              
+              <DetailRow 
+                icon="person" 
+                label="Parents' Name" 
                 value={mentorCard.name_of_pareents}
+                editable={isEditing}
                 onChangeText={(value) => handleInputChange('name_of_pareents', value)}
               />
-            ) : (
-              <Text style={styles.value}>{mentorCard.name_of_pareents || '-'}</Text>
-            )}
-            <Text style={styles.label}>Parents' Email:</Text>
-            {isEditing ? (
-              <TextInput
-                style={styles.input}
+              <DetailRow 
+                icon="call" 
+                label="Parents' Phone" 
+                value={mentorCard.mobile_no_of_parents}
+                editable={isEditing}
+                onChangeText={(value) => handleInputChange('mobile_no_of_parents', value)}
+              />
+              <DetailRow 
+                icon="mail" 
+                label="Parents' Email" 
                 value={mentorCard.email_of_parents}
+                editable={isEditing}
                 onChangeText={(value) => handleInputChange('email_of_parents', value)}
               />
-            ) : (
-              <Text style={styles.value}>{mentorCard.email_of_parents || '-'}</Text>
-            )}
-          </View>
-          <View style={styles.row}>
-            <Text style={styles.label}>Present Address:</Text>
-            {isEditing ? (
-              <TextInput
-                style={[styles.input, { width: '90%' }]}
-                value={mentorCard.present_address}
-                onChangeText={(value) => handleInputChange('present_address', value)}
+              <DetailRow 
+                icon="person" 
+                label="Guardian Name" 
+                value={mentorCard.name_of_localgurdian}
+                editable={isEditing}
+                onChangeText={(value) => handleInputChange('name_of_localgurdian', value)}
               />
-            ) : (
-              <Text style={[styles.value, { width: '90%' }]}>{mentorCard.present_address || '-'}</Text>
-            )}
-          </View>
-        </View>
+              <DetailRow 
+                icon="call" 
+                label="Guardian Phone" 
+                value={mentorCard.moble_no_of_localgurdent}
+                editable={isEditing}
+                onChangeText={(value) => handleInputChange('moble_no_of_localgurdent', value)}
+              />
+            </View>
 
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Part B: Progress</Text>
-          {renderSemesterHeader()}
-          {renderSemesterData('SGPA', 'sgpa_sem')}
-          {renderSemesterData('CGPA', 'cgpa_sem')}
-          {renderSemesterData('Co-Curricular', 'co_curricular_sem')}
-          {renderSemesterData('Difficulties', 'difficulty_faced_sem')}
-          {renderSemesterData('Disciplinary', 'disciplinary_action_sem')}
-        </View>
-      </KeyboardAwareScrollView>
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <Ionicons name="medical-outline" size={24} color="#6366f1" />
+                <Text style={styles.cardTitle}>Additional Information</Text>
+              </View>
+              
+              <DetailRow 
+                icon="alert-circle" 
+                label="Health Issues" 
+                value={mentorCard.any_helthissue}
+                editable={isEditing}
+                onChangeText={(value) => handleInputChange('any_helthissue', value)}
+              />
+            </View>
+          </View>
+        ) : (
+          <View style={styles.academicContainer}>
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <Ionicons name="bar-chart-outline" size={24} color="#6366f1" />
+                <Text style={styles.cardTitle}>Academic Progress</Text>
+              </View>
+              
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View>
+                  {renderSemesterHeader()}
+                  {renderSemesterData('SGPA', 'sgpa_sem', 'trending-up')}
+                  {renderSemesterData('CGPA', 'cgpa_sem', 'trending-up')}
+                  {renderSemesterData('Co-Curricular', 'co_curricular_sem', 'emoji-events')}
+                  {renderSemesterData('Difficulties', 'difficulty_faced_sem', 'military-tech')}
+                  {renderSemesterData('Disciplinary', 'disciplinary_action_sem', 'error-outline')}
+                </View>
+              </ScrollView>
+            </View>
+          </View>
+        )}
+
+        {/* Save Button */}
+        {isEditing && (
+          <TouchableOpacity 
+            style={styles.saveButton} 
+            onPress={handleSave}
+            disabled={isSaving}
+          >
+            {isSaving ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <Feather name="save" size={20} color="#fff" />
+                <Text style={styles.saveButtonText}>Save Changes</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        )}
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
+// Always use mentorCard for editable fields!
+const DetailRow = ({ icon, label, value, editable, onChangeText }) => (
+  <View style={styles.detailRow}>
+    <View style={styles.detailIconContainer}>
+      <Ionicons name={icon} size={18} color="#6366f1" />
+    </View>
+    <Text style={styles.detailLabel}>{label}</Text>
+    {editable ? (
+      <TextInput
+        style={styles.detailInput}
+        value={value}
+        onChangeText={onChangeText}
+        placeholder="-"
+      />
+    ) : (
+      <Text style={styles.detailValue} numberOfLines={2}>{value || '-'}</Text>
+    )}
+  </View>
+);
+
 const styles = StyleSheet.create({
-  container: { padding: 15, backgroundColor: '#f4f4f8' },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  title: { fontSize: 22, fontWeight: 'bold', color: '#2c3e50' },
-  subtitle: { fontSize: 12, fontStyle: 'italic', color: '#7f8c8d' },
-  editBtn: { backgroundColor: '#3498db', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 6 },
-  saveBtn: {
-    backgroundColor: 'green', paddingVertical: 10, paddingHorizontal: 18,
-    alignSelf: 'flex-end', borderRadius: 8, marginBottom: 10
+  container: {
+    flexGrow: 1,
+    backgroundColor: '#f8fafc',
+    paddingBottom: 30,
+  },
+  header: {
+    paddingTop: 50,
+    paddingBottom: 20,
+    paddingHorizontal: 24,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    fontSize: 16,
+    color: '#e0e7ff',
+    fontWeight: '500',
+  },
+  editToggleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 24,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  editToggleText: {
+    fontSize: 14,
+    color: '#64748b',
+    marginRight: 8,
+    fontWeight: '500',
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    marginHorizontal: 24,
+    marginTop: 8,
+    marginBottom: 16,
+    backgroundColor: '#f1f5f9',
+    borderRadius: 12,
+    padding: 4,
+  },
+  tabButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  activeTab: {
+    backgroundColor: '#fff',
+    shadowColor: '#6366f1',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  tabText: {
+    marginLeft: 8,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#64748b',
+  },
+  activeTabText: {
+    color: '#6366f1',
   },
   card: {
-    borderWidth: 1, borderColor: '#dcdde1', borderRadius: 12,
-    padding: 18, backgroundColor: '#fff', marginBottom: 20,
-    elevation: 3, shadowColor: '#000', shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 2 }, shadowRadius: 5,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  sectionTitle: {
-    fontSize: 17, fontWeight: '700', color: '#34495e',
-    borderBottomWidth: 1, borderColor: '#bdc3c7', marginBottom: 10, paddingBottom: 5,
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
   },
-  row: {
-    flexDirection: 'row', flexWrap: 'wrap',
-    borderBottomWidth: 0.5, borderColor: '#ecf0f1', paddingVertical: 8,
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginLeft: 8,
   },
-  label: { width: '45%', fontWeight: '600', color: '#2c3e50', paddingHorizontal: 5, fontSize: 14 },
-  value: { width: '50%', color: '#2d3436', paddingHorizontal: 5, fontSize: 14 },
-  input: {
-    width: '50%', borderWidth: 1, borderColor: '#dfe6e9', borderRadius: 6,
-    paddingHorizontal: 8, paddingVertical: 4, color: '#2d3436', fontSize: 14
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
   },
-  semesterRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-  semesterLabel: { width: '25%', fontWeight: '500', fontSize: 14 },
-  semesterValue: { width: '7.5%', textAlign: 'center', fontSize: 14, color: '#2d3436' },
+  detailIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#eef2ff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  detailLabel: {
+    width: 120,
+    fontSize: 14,
+    color: '#64748b',
+    fontWeight: '500',
+  },
+  detailValue: {
+    flex: 1,
+    fontSize: 15,
+    color: '#1e293b',
+    fontWeight: '600',
+    textAlign: 'right',
+  },
+  detailInput: {
+    flex: 1,
+    fontSize: 15,
+    color: '#1e293b',
+    fontWeight: '600',
+    textAlign: 'right',
+    borderBottomWidth: 1,
+    borderBottomColor: '#c7d2fe',
+    paddingVertical: 4,
+  },
+  semesterHeader: {
+    flexDirection: 'row',
+    marginBottom: 8,
+  },
+  semesterHeaderLabel: {
+    width: 140,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1e293b',
+  },
+  semesterHeaderRow: {
+    flexDirection: 'row',
+  },
+  semesterHeaderValue: {
+    width: 60,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1e293b',
+    textAlign: 'center',
+  },
+  semesterRow: {
+    flexDirection: 'row',
+    marginBottom: 8,
+  },
+  semesterLabelContainer: {
+    width: 140,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  semesterIcon: {
+    marginRight: 8,
+  },
+  semesterLabel: {
+    fontSize: 14,
+    color: '#475569',
+    fontWeight: '500',
+  },
+  semesterValuesContainer: {
+    flexDirection: 'row',
+  },
   semesterInput: {
-    width: '7.5%', borderWidth: 1, borderColor: '#bdc3c7',
-    padding: 6, fontSize: 14, color: '#2d3436', textAlign: 'center'
+    width: 60,
+    height: 36,
+    borderWidth: 1,
+    borderColor: '#c7d2fe',
+    borderRadius: 8,
+    marginHorizontal: 2,
+    textAlign: 'center',
+    color: '#1e293b',
+    fontWeight: '500',
+    fontSize: 14,
+    backgroundColor: '#f8fafc',
   },
-  scrollContainer: {
-  padding: 15,
-  backgroundColor: '#f4f4f8',
-  paddingBottom: 100, // Ensures space below the last field
-},
-
+  semesterValue: {
+    width: 60,
+    height: 36,
+    textAlign: 'center',
+    paddingVertical: 8,
+    color: '#1e293b',
+    fontWeight: '500',
+    fontSize: 14,
+  },
+  saveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#6366f1',
+    paddingVertical: 16,
+    borderRadius: 14,
+    marginHorizontal: 16,
+    marginTop: 8,
+    shadowColor: '#6366f1',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  loaderContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#64748b',
+    fontWeight: '500',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    padding: 24,
+  },
+  errorText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1e293b',
+    marginTop: 16,
+  },
+  retryButton: {
+    marginTop: 16,
+    backgroundColor: '#6366f1',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
 });

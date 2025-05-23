@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, FlatList,
-  TouchableOpacity, StyleSheet, SafeAreaView
+  TouchableOpacity, StyleSheet, SafeAreaView, Platform
 } from 'react-native';
 import {
   Ionicons, MaterialCommunityIcons,
@@ -12,33 +12,44 @@ const admins = [
   {
     id: '1',
     name: 'DEPARTMENT',
-    icon: <Ionicons name="business-outline" size={24} color="#0057ff" />
+    description: 'Manage academic departments and their details',
+    icon: <Ionicons name="business-outline" size={24} color="#4F46E5" />,
+    color: '#EEF2FF'
   },
   {
     id: '2',
     name: 'PROGRAMME',
-    icon: <MaterialCommunityIcons name="file-document-outline" size={24} color="#7b61ff" />
+    description: 'Configure and update programme information',
+    icon: <MaterialCommunityIcons name="file-document-outline" size={24} color="#9333EA" />,
+    color: '#F5F3FF'
   },
   {
     id: '4',
     name: 'BATCHS',
-    icon: <MaterialCommunityIcons name="calendar-range" size={24} color="#00bf72" />
+    description: 'Oversee and edit batch schedules',
+    icon: <MaterialCommunityIcons name="calendar-range" size={24} color="#10B981" />,
+    color: '#ECFDF5'
   },
   {
     id: '3',
     name: 'FACULTY',
-    icon: <MaterialCommunityIcons name="account-tie-outline" size={24} color="#ff6f3c" />
+    description: 'Add or update faculty member records',
+    icon: <MaterialCommunityIcons name="account-tie-outline" size={24} color="#FF6F3C" />,
+    color: '#FFF7ED'
   },
   {
     id: '5',
     name: 'STUDENTS',
-    icon: <FontAwesome5 name="user-graduate" size={22} color="#e33fb1" />
+    description: 'Manage student profiles and enrollment',
+    icon: <FontAwesome5 name="user-graduate" size={22} color="#E33FB1" />,
+    color: '#FDF2F8'
   },
-
-   {
+  {
     id: '6',
     name: 'SESSION MANAGEMENT',
-    icon: <FontAwesome5 name="user-graduate" size={22} color="#e33fb1" />
+    description: 'Organize and control academic sessions',
+    icon: <FontAwesome5 name="user-graduate" size={22} color="#2563EB" />,
+    color: '#DBEAFE'
   }
 ];
 
@@ -50,27 +61,32 @@ export default function AdminManagement({ navigation }) {
   );
 
   const handleSelect = (admin) => {
-    navigation.navigate(admin.name); // Make sure screen names match these exactly
+    navigation.navigate(admin.name); // Ensure screen names match exactly
   };
 
   const renderAdmin = ({ item }) => (
     <TouchableOpacity
       style={styles.itemContainer}
       onPress={() => handleSelect(item)}
-      activeOpacity={0.8}
+      activeOpacity={0.9}
     >
-      <View style={styles.iconWrapper}>{item.icon}</View>
-      <Text style={styles.itemText}>{item.name}</Text>
-      <Ionicons name="chevron-forward" size={20} color="#888" />
+      <View style={[styles.iconWrapper, { backgroundColor: item.color }]}>
+        {item.icon}
+      </View>
+      <View style={styles.textContainer}>
+        <Text style={styles.itemText}>{item.name}</Text>
+        <Text style={styles.itemDescription}>{item.description}</Text>
+      </View>
+      <Ionicons name="chevron-forward" size={22} color="#D1D5DB" style={styles.chevron} />
     </TouchableOpacity>
   );
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
+      {/* <View style={styles.header}>
         <Text style={styles.title}>Admin Management</Text>
         <Text style={styles.subtitle}>Manage academic sections</Text>
-      </View>
+      </View> */}
 
       <View style={styles.container}>
         <View style={styles.searchBox}>
@@ -80,6 +96,7 @@ export default function AdminManagement({ navigation }) {
             style={styles.searchInput}
             value={search}
             onChangeText={setSearch}
+            placeholderTextColor="#aaa"
           />
         </View>
 
@@ -88,6 +105,7 @@ export default function AdminManagement({ navigation }) {
           keyExtractor={(item) => item.id}
           renderItem={renderAdmin}
           contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
         />
       </View>
     </SafeAreaView>
@@ -95,31 +113,41 @@ export default function AdminManagement({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#f2f6ff' },
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#f2f6ff',
+  },
   header: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 10,
+    paddingHorizontal: 24,
+    paddingTop: 2,
+    paddingBottom: 2,
+    backgroundColor: '#f2f6ff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
   },
   title: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#003366',
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#111827',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
   subtitle: {
     fontSize: 14,
-    color: '#666',
+    color: '#6B7280',
     marginTop: 4,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
   container: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    flex: 1,
   },
   searchBox: {
     flexDirection: 'row',
-    backgroundColor: '#f2f2f2',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 10,
+    backgroundColor: '#f3f4f6',
+    paddingHorizontal: 14,
+    paddingVertical: 3,
+    borderRadius: 12,
     marginBottom: 20,
     alignItems: 'center',
   },
@@ -127,37 +155,51 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: '#333',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
   listContent: {
-    paddingBottom: 20,
+    paddingBottom: 24,
   },
   itemContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    marginBottom: 14,
+    paddingVertical: 18,
+    paddingHorizontal: 20,
+    borderRadius: 14,
+    marginBottom: 12,
     shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
   },
   iconWrapper: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 48,
+    height: 48,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 14,
-    backgroundColor: '#e6f0ff',
+    marginRight: 16,
+  },
+  textContainer: {
+    flex: 1,
   },
   itemText: {
-    flex: 1,
     fontSize: 16,
     fontWeight: '500',
-    color: '#222',
+    color: '#111827',
+    marginBottom: 2,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+  },
+  itemDescription: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+  },
+  chevron: {
+    marginLeft: 8,
   },
 });

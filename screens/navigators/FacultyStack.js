@@ -1,8 +1,8 @@
-// navigators/FacultyStack.js
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import { Platform } from 'react-native';
 
 import FacultyHome from '../faculty/FacultyHome';
 import FacultyProfile from '../faculty/FacultyProfile';
@@ -19,50 +19,58 @@ function FacultyTabs() {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
-        tabBarIcon: ({ color, size }) => {
+        tabBarIcon: ({ focused, color, size }) => {
           let iconName;
-          if (route.name === 'Home') iconName = 'home-outline';
-          else if (route.name === 'Appointments') iconName = 'calendar-outline';
-          else if (route.name === 'MentorCard') iconName = 'document-text-outline';
-          else if (route.name === 'Profile') iconName = 'person-outline';
+          if (route.name === 'Home') iconName = focused ? 'home' : 'home-outline';
+          else if (route.name === 'Appointments') iconName = focused ? 'calendar' : 'calendar-outline';
+          else if (route.name === 'MentorCard') iconName = focused ? 'document-text' : 'document-text-outline';
+          else if (route.name === 'Profile') iconName = focused ? 'person' : 'person-outline';
           return <Ionicons name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: '#007bff',
-        tabBarInactiveTintColor: 'black',
+        tabBarActiveTintColor: '#4F46E5',
+        tabBarInactiveTintColor: '#6B7280',
         tabBarStyle: {
-          backgroundColor: '#ffffff',
-          borderTopLeftRadius: 20,
-          borderTopRightRadius: 20,
-          height: 60,
+          backgroundColor: '#FFFFFF',
+          borderTopLeftRadius: 24,
+          borderTopRightRadius: 24,
+          height: Platform.OS === 'ios' ? 90 : 70,
+          paddingBottom: Platform.OS === 'ios' ? 25 : 10,
           shadowColor: '#000',
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 8,
-          elevation: 5,
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.08,
+          shadowRadius: 12,
+          elevation: 10,
+          borderTopWidth: 0,
+          position: 'absolute',
         },
         tabBarLabelStyle: {
           fontSize: 12,
-          fontWeight: '600',
-          marginBottom: 4,
+          fontWeight: "600",
+          marginBottom: Platform.OS === 'ios' ? 0 : 4,
+          fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
         },
         headerStyle: {
-          backgroundColor: '#f2f6ff',
+          backgroundColor: "#f2f6ff",
           elevation: 0,
           shadowOpacity: 0,
           borderBottomWidth: 0,
         },
         headerTitleStyle: {
-          fontWeight: 'bold',
-          fontSize: 18,
+          fontWeight: "600",
+          fontSize: 20,
+          color: "#111827",
+          fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
         },
-        headerTintColor: 'black',
+        headerTintColor: "#4F46E5",
+        headerTitleAlign: 'center',
+        headerShadowVisible: false,
         headerShown: true,
       })}
     >
-      <Tab.Screen name="Home" component={FacultyHome} />
-      <Tab.Screen name="Appointments" component={FacultyAppointment} />
-      <Tab.Screen name="MentorCard" component={ManageMentorcard} />
-      <Tab.Screen name="Profile" component={FacultyProfile} />
+      <Tab.Screen name="Home" component={FacultyHome} options={{ headerShown: false }} />
+      <Tab.Screen name="Appointments" component={FacultyAppointment} options={{ title: 'Appointments' }} />
+      <Tab.Screen name="MentorCard" component={ManageMentorcard} options={{ title: 'Mentor Card' }} />
+      <Tab.Screen name="Profile" component={FacultyProfile} options={{ title: 'Profile' }} />
     </Tab.Navigator>
   );
 }
@@ -73,16 +81,23 @@ export default function FacultyStack() {
       screenOptions={{
         headerShown: true,
         headerStyle: {
-          backgroundColor: '#f2f6ff',
-          elevation: 0, // Android
-          shadowOpacity: 0, // iOS
+          backgroundColor: "#f2f6ff",
+          elevation: 0,
+          shadowOpacity: 0,
           borderBottomWidth: 0,
         },
         headerTitleStyle: {
-          fontWeight: 'bold',
-          fontSize: 18,
+          fontWeight: "600",
+          fontSize: 20,
+          color: "#111827",
+          fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
         },
-        headerTintColor: 'black',
+        headerTintColor: "#4F46E5",
+        headerTitleAlign: 'center',
+        headerShadowVisible: false,
+        contentStyle: {
+          backgroundColor: "#F8FAFC",
+        },
       }}
     >
       <Stack.Screen

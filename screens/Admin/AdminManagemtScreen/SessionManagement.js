@@ -59,7 +59,7 @@ export default function StudentBasicListScreen() {
   const [infoData, setInfoData] = useState(null);
 
   const primaryColor = isDark ? '#4F8EF7' : '#3366FF';
-  const bgColor = isDark ? '#121212' : '#F5F7FA';
+  const bgColor = isDark ? '#121212' : '#f2f6ff';
   const cardBg = isDark ? '#1E1E1E' : '#FFF';
   const textColor = isDark ? '#EEE' : '#222';
   const subTextColor = isDark ? '#AAA' : '#666';

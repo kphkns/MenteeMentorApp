@@ -1,33 +1,80 @@
 {
   "expo": {
-    "name": "MenteeMentorApp",
-    "slug": "MenteeMentorApp",
-    "version": "1.0.0",
+    "name": "MentorConnect",
+    "slug": "mentor-connect",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+    "userInterfaceStyle": "automatic",
+    "backgroundColor": "#F8FAFC",
+    "primaryColor": "#6366F1",
+    "jsEngine": "hermes",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#F8FAFC"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "buildNumber": "1.1.0",
+      "infoPlist": {
+        "UIViewControllerBasedStatusBarAppearance": true,
+        "UIStatusBarStyle": "UIStatusBarStyleDarkContent"
+      },
+      "userInterfaceStyle": "automatic"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#FFFFFF"
       },
-      "package": "com.kphkns.MenteeMentorApp"
+      "package": "com.mentor.connect",
+      "versionCode": 110,
+      "softwareKeyboardLayoutMode": "pan",
+      "userInterfaceStyle": "automatic"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
+    "plugins": [
+      [
+        "expo-screen-orientation",
+        {
+          "initialOrientation": "PORTRAIT"
+        }
+      ],
+      [
+        "expo-font",
+        {
+          "fonts": [
+            "./assets/fonts/Inter-Bold.ttf",
+            "./assets/fonts/Inter-Medium.ttf",
+            "./assets/fonts/Inter-Regular.ttf"
+          ]
+        }
+      ]
+    ],
     "extra": {
       "eas": {
         "projectId": "cf1ff76a-6aa5-43a0-aea9-1f9fa5637042"
+      },
+      "uiConfig": {
+        "borderRadius": {
+          "small": 8,
+          "medium": 12,
+          "large": 16,
+          "xlarge": 24
+        },
+        "colors": {
+          "primary": "#6366F1",
+          "primaryLight": "#C7D2FE",
+          "secondary": "#10B981",
+          "danger": "#EF4444",
+          "background": "#F8FAFC",
+          "card": "#FFFFFF",
+          "text": "#1E293B",
+          "textSecondary": "#64748B"
+        }
       }
     }
   }

@@ -2,11 +2,12 @@ import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   FlatList, Alert, StyleSheet, ActivityIndicator,
-  Modal, BackHandler, RefreshControl
+  Modal, BackHandler, RefreshControl, Platform
 } from 'react-native';
 import axios from 'axios';
-import { Ionicons, Feather } from '@expo/vector-icons';
+import { Ionicons, Feather, MaterialIcons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
+import * as Haptics from 'expo-haptics';
 
 const SERVER_URL = 'http://192.168.84.136:5000';
 
@@ -54,6 +55,7 @@ export default function ProgrammeScreen() {
   useEffect(() => {
     const backAction = () => {
       if (isSelectionMode) {
+        Haptics.selectionAsync();
         setIsSelectionMode(false);
         setSelectedProgs([]);
         return true;
@@ -72,6 +74,7 @@ export default function ProgrammeScreen() {
 
   const handleAddOrUpdate = async () => {
     if (!courseName.trim() || !selectedDept) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return Alert.alert('Validation', 'Please fill all fields');
     }
     try {
@@ -90,8 +93,10 @@ export default function ProgrammeScreen() {
       await fetchProgrammes();
       setModalVisible(false);
       resetForm();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert(editingCourse ? 'Updated' : 'Added', `Programme ${editingCourse ? 'updated' : 'added'} successfully`);
     } catch {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Error', 'Failed to save programme');
     } finally {
       setSaving(false);
@@ -100,15 +105,23 @@ export default function ProgrammeScreen() {
 
   const handleDelete = async (ids) => {
     Alert.alert('Confirm', `Delete ${ids.length} programme(s)?`, [
-      { text: 'Cancel', style: 'cancel' },
+      { 
+        text: 'Cancel', 
+        style: 'cancel',
+        onPress: () => Haptics.selectionAsync()
+      },
       {
-        text: 'Delete', style: 'destructive', onPress: async () => {
+        text: 'Delete', 
+        style: 'destructive', 
+        onPress: async () => {
           try {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
             await Promise.all(ids.map(id => axios.delete(`${SERVER_URL}/admin/courses/${id}`)));
             setSelectedProgs([]);
             setIsSelectionMode(false);
             fetchProgrammes();
           } catch {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
             Alert.alert('Error', 'Delete failed');
           }
         }
@@ -117,6 +130,7 @@ export default function ProgrammeScreen() {
   };
 
   const toggleSelect = (id) => {
+    Haptics.selectionAsync();
     if (selectedProgs.includes(id)) {
       setSelectedProgs(selectedProgs.filter(item => item !== id));
     } else {
@@ -125,6 +139,7 @@ export default function ProgrammeScreen() {
   };
 
   const toggleExpansion = (id) => {
+    Haptics.selectionAsync();
     setExpandedProgs(prev =>
       prev.includes(id) ? prev.filter(pid => pid !== id) : [...prev, id]
     );
@@ -135,6 +150,7 @@ export default function ProgrammeScreen() {
   );
 
   const onRefresh = useCallback(() => {
+    Haptics.selectionAsync();
     setRefreshing(true);
     fetchProgrammes();
   }, []);
@@ -147,6 +163,7 @@ export default function ProgrammeScreen() {
     return (
       <TouchableOpacity
         onLongPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
           setIsSelectionMode(true);
           toggleSelect(item.Course_ID);
         }}
@@ -157,102 +174,174 @@ export default function ProgrammeScreen() {
             toggleExpansion(item.Course_ID);
           }
         }}
-        style={[styles.card, isSelected && { backgroundColor: '#e6f2ff' }]}
+        style={[
+          styles.card, 
+          isSelected && styles.selectedCard,
+          isExpanded && styles.expandedCard
+        ]}
+        activeOpacity={0.8}
       >
-        <View style={{ flex: 1 }}>
-          <Text style={styles.cardTitle}>{item.Course_name}</Text>
+        <View style={styles.cardContent}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardTitle}>{item.Course_name}</Text>
+            {!isSelectionMode && (
+              <TouchableOpacity 
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  setCourseName(item.Course_name);
+                  setSelectedDept(String(item.Dept_ID));
+                  setEditingCourse(item);
+                  setModalVisible(true);
+                }}
+                style={styles.editButton}
+              >
+                <Feather name="edit-2" size={20} color={styles.iconColor} />
+              </TouchableOpacity>
+            )}
+          </View>
+          
           {isExpanded && department && (
-            <Text style={styles.cardSub}>Department: <Text style={{ fontWeight: '600' }}>{department.Dept_name}</Text></Text>
+            <View style={styles.departmentInfo}>
+              <MaterialIcons name="apartment" size={18} color={styles.iconColor} />
+              <Text style={styles.cardSub}>{department.Dept_name}</Text>
+            </View>
           )}
         </View>
-        {!isSelectionMode && (
-          <TouchableOpacity onPress={() => {
-            setCourseName(item.Course_name);
-            setSelectedDept(String(item.Dept_ID));
-            setEditingCourse(item);
-            setModalVisible(true);
-          }}>
-            <Feather name="edit-2" size={20} color="#007bff" />
-          </TouchableOpacity>
-        )}
       </TouchableOpacity>
     );
   };
 
   return (
     <View style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Programmes</Text>
         {isSelectionMode ? (
-          <View style={styles.selectionHeader}>
+          <View style={styles.selectionActions}>
             <Text style={styles.selectedCount}>{selectedProgs.length} selected</Text>
-            <TouchableOpacity style={styles.addBtn} onPress={() => handleDelete(selectedProgs)}>
-              <Ionicons name="trash-outline" size={20} color="#fff" />
+            <TouchableOpacity 
+              style={styles.deleteButton} 
+              onPress={() => handleDelete(selectedProgs)}
+            >
+              <Ionicons name="trash-outline" size={22} color="#fff" />
             </TouchableOpacity>
           </View>
         ) : (
-          <TouchableOpacity style={styles.addBtn} onPress={() => setModalVisible(true)}>
-            <Feather name="plus" size={20} color="#fff" />
+          <TouchableOpacity 
+            style={styles.addButton} 
+            onPress={() => {
+              Haptics.selectionAsync();
+              setModalVisible(true);
+            }}
+          >
+            <Feather name="plus" size={22} color="#fff" />
           </TouchableOpacity>
         )}
       </View>
 
-      <TextInput
-        placeholder="Search programmes..."
-        value={search}
-        onChangeText={setSearch}
-        style={styles.searchInput}
-      />
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <Feather name="search" size={20} color={styles.iconColor} style={styles.searchIcon} />
+        <TextInput
+          placeholder="Search programmes..."
+          placeholderTextColor={styles.placeholderColor}
+          value={search}
+          onChangeText={setSearch}
+          style={styles.searchInput}
+        />
+      </View>
 
+      {/* Content */}
       {loading ? (
-        <ActivityIndicator size="large" color="#007bff" style={{ marginTop: 20 }} />
+        <ActivityIndicator size="large" color={styles.primaryColor} style={styles.loadingIndicator} />
       ) : filteredProgrammes.length === 0 ? (
-        <Text style={styles.emptyText}>No programmes found 😕</Text>
+        <View style={styles.emptyState}>
+          <Feather name="book" size={40} color={styles.iconColor} />
+          <Text style={styles.emptyText}>No programmes found</Text>
+        </View>
       ) : (
         <FlatList
           data={filteredProgrammes}
           keyExtractor={(item) => item.Course_ID.toString()}
           renderItem={renderItem}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-          contentContainerStyle={{ paddingBottom: 100 }}
+          refreshControl={
+            <RefreshControl 
+              refreshing={refreshing} 
+              onRefresh={onRefresh}
+              colors={[styles.primaryColor]}
+              tintColor={styles.primaryColor}
+            />
+          }
+          contentContainerStyle={styles.listContent}
         />
       )}
 
-      {/* Modal */}
-      <Modal visible={modalVisible} animationType="slide" transparent>
+      {/* Add/Edit Modal */}
+      <Modal 
+        visible={modalVisible} 
+        animationType="slide" 
+        transparent
+        statusBarTranslucent
+      >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>{editingCourse ? 'Update Programme' : 'Add Programme'}</Text>
+            <Text style={styles.modalTitle}>
+              {editingCourse ? 'Update Programme' : 'Add New Programme'}
+            </Text>
+            
+            <Text style={styles.inputLabel}>Programme Name</Text>
             <TextInput
-              placeholder="Programme Name"
+              placeholder="Enter programme name"
+              placeholderTextColor={styles.placeholderColor}
               value={courseName}
               onChangeText={setCourseName}
               style={styles.input}
             />
+            
+            <Text style={styles.inputLabel}>Department</Text>
             <View style={styles.pickerContainer}>
-              <Picker selectedValue={selectedDept} onValueChange={setSelectedDept}>
+              <Picker 
+                selectedValue={selectedDept} 
+                onValueChange={setSelectedDept}
+                dropdownIconColor={styles.iconColor}
+              >
                 <Picker.Item label="Select Department" value="" />
                 {departments.map(dept => (
-                  <Picker.Item key={dept.Dept_id} label={dept.Dept_name} value={dept.Dept_id} />
+                  <Picker.Item 
+                    key={dept.Dept_id} 
+                    label={dept.Dept_name} 
+                    value={dept.Dept_id} 
+                  />
                 ))}
               </Picker>
             </View>
+            
             <View style={styles.modalActions}>
               <TouchableOpacity
-                style={[styles.saveBtn, saving && { opacity: 0.6 }]}
+                style={[styles.saveButton, saving && styles.disabledButton]}
                 onPress={handleAddOrUpdate}
                 disabled={saving}
               >
-                <Text style={styles.saveText}>{saving ? 'Saving...' : (editingCourse ? 'Update' : 'Add')}</Text>
+                {saving ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.buttonText}>
+                    {editingCourse ? 'Update' : 'Add'} Programme
+                  </Text>
+                )}
               </TouchableOpacity>
+              
               <TouchableOpacity
-                style={styles.cancelBtn}
+                style={styles.cancelButton}
                 onPress={() => {
+                  Haptics.selectionAsync();
                   setModalVisible(false);
                   resetForm();
                 }}
               >
-                <Text style={styles.cancelText}>Cancel</Text>
+                <Text style={[styles.buttonText, { color: styles.primaryColor }]}>
+                  Cancel
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -262,48 +351,249 @@ export default function ProgrammeScreen() {
   );
 }
 
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f7faff', padding: 16 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  title: { fontSize: 22, fontWeight: '700', color: '#1a1a1a' },
-  addBtn: {
-    backgroundColor: '#007bff', padding: 10, borderRadius: 30,
-    alignItems: 'center', justifyContent: 'center'
+  // Theme colors
+  primaryColor: '#6366f1',
+  secondaryColor: '#818cf8',
+  backgroundColor: '#f8faff',
+  cardBackground: '#ffffff',
+  textColor: '#1a1d2e',
+  subtitleColor: '#6b7280',
+  iconColor: '#6b7280',
+  placeholderColor: '#9ca3af',
+  borderColor: '#e5e7eb',
+  errorColor: '#ef4444',
+  successColor: '#10b981',
+
+  // Main container
+  container: {
+    flex: 1,
+    backgroundColor: '#f2f6ff',
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'ios' ? 50 : 20,
+  },
+
+  // Header
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#1a1d2e',
+  },
+  addButton: {
+    backgroundColor: '#6366f1',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 3,
+    shadowColor: '#6366f1',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+  },
+  deleteButton: {
+    backgroundColor: '#ef4444',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 3,
+    shadowColor: '#ef4444',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+  },
+  selectionActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  selectedCount: {
+    marginRight: 15,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ef4444',
+  },
+
+  // Search
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 20,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+  },
+  searchIcon: {
+    marginRight: 10,
   },
   searchInput: {
-    backgroundColor: '#fff', padding: 10, borderRadius: 10, borderColor: '#ccc',
-    borderWidth: 1, marginBottom: 16
+    flex: 1,
+    fontSize: 16,
+    color: '#1a1d2e',
   },
+
+  // List
+  listContent: {
+    paddingBottom: 30,
+  },
+  loadingIndicator: {
+    marginTop: 40,
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 60,
+  },
+  emptyText: {
+    marginTop: 15,
+    fontSize: 16,
+    color: '#6b7280',
+  },
+
+  // Cards
   card: {
-    backgroundColor: '#fff', padding: 14, borderRadius: 12, flexDirection: 'row',
-    justifyContent: 'space-between', alignItems: 'center', marginBottom: 12,
-    elevation: 2, shadowColor: '#000', shadowOpacity: 0.08,
-    shadowRadius: 4, shadowOffset: { width: 0, height: 2 }
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
   },
-  cardTitle: { fontSize: 16, fontWeight: '500', color: '#333' },
-  cardSub: { marginTop: 6, fontSize: 14, color: '#555' },
-  emptyText: { textAlign: 'center', marginTop: 30, color: '#666' },
+  selectedCard: {
+    backgroundColor: '#e0e7ff',
+    borderWidth: 1,
+    borderColor: '#c7d2fe',
+  },
+  expandedCard: {
+    backgroundColor: '#f9fafc',
+  },
+  cardContent: {
+    flex: 1,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1a1d2e',
+    flex: 1,
+  },
+  editButton: {
+    padding: 6,
+    marginLeft: 10,
+  },
+  departmentInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+  },
+  cardSub: {
+    fontSize: 14,
+    color: '#6b7280',
+    marginLeft: 8,
+  },
+
+  // Modal
   modalOverlay: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center'
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
   },
   modalContent: {
-    width: '90%', backgroundColor: '#fff', borderRadius: 10, padding: 20
+    width: '100%',
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 24,
   },
-  modalTitle: { fontSize: 18, fontWeight: '600', marginBottom: 15, color: '#007bff' },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1a1d2e',
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#4b5563',
+    marginBottom: 8,
+  },
   input: {
-    backgroundColor: '#f9f9f9', padding: 10, borderRadius: 8, borderColor: '#ccc',
-    borderWidth: 1, marginBottom: 15
+    backgroundColor: '#f9fafc',
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    color: '#1a1d2e',
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
   },
   pickerContainer: {
-    backgroundColor: '#f9f9f9', borderRadius: 8, borderWidth: 1,
-    borderColor: '#ccc', marginBottom: 15
+    backgroundColor: '#f9fafc',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    marginBottom: 24,
+    overflow: 'hidden',
   },
-  modalActions: { flexDirection: 'row', justifyContent: 'space-between' },
-  saveBtn: { backgroundColor: '#007bff', padding: 10, borderRadius: 8, flex: 1, alignItems: 'center', marginRight: 10 },
-  saveText: { color: '#fff', fontWeight: '600' },
-  cancelBtn: { backgroundColor: '#f0f0f0', padding: 10, borderRadius: 8, flex: 1, alignItems: 'center' },
-  cancelText: { color: '#666', fontWeight: '600' },
-  selectionHeader: { flexDirection: 'row', alignItems: 'center' },
-  selectedCount: { marginRight: 10, fontSize: 16, fontWeight: '600', color: '#d9534f' },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  saveButton: {
+    flex: 1,
+    backgroundColor: '#6366f1',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+    elevation: 3,
+    shadowColor: '#6366f1',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+  },
+  cancelButton: {
+    flex: 1,
+    backgroundColor: '#f3f4f6',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  disabledButton: {
+    opacity: 0.7,
+  },
+  buttonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
 });

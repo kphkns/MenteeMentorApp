@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, TextInput, Alert, TouchableOpacity,
-  StyleSheet, Platform
+  View, Text, TextInput, Alert, ScrollView, 
+  TouchableOpacity, StyleSheet, Platform
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { Picker } from '@react-native-picker/picker';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 
 export default function StudentAppointmentScreen({ navigation }) {
   const [studentId, setStudentId] = useState(null);
@@ -24,32 +24,25 @@ export default function StudentAppointmentScreen({ navigation }) {
   const API_URL = 'http://192.168.84.136:5000';
 
   useEffect(() => {
-    const init = async () => {
-      try {
-        const token = await AsyncStorage.getItem('authToken');
-        if (!token) return;
+    (async () => {
+      const token = await AsyncStorage.getItem('authToken');
+      if (!token) return;
 
-        const res = await axios.get(`${API_URL}/api/appointments/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+      const res = await axios.get(`${API_URL}/api/appointments/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setStudentId(res.data.studentId);
+      setFacultyId(res.data.facultyId);
 
-        setStudentId(res.data.studentId);
-        setFacultyId(res.data.facultyId);
+      const appointments = await axios.get(`${API_URL}/api/appointments/mine`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-        const appointments = await axios.get(`${API_URL}/api/appointments/mine`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        const hasActive = appointments.data.some(app =>
-          ['pending', 'accepted'].includes(app.status)
-        );
-        setHasActiveAppointment(hasActive);
-      } catch (error) {
-        Alert.alert('Error', 'Failed to fetch user data or appointments.');
-      }
-    };
-
-    init();
+      const hasActive = appointments.data.some(app =>
+        ['pending', 'accepted'].includes(app.status)
+      );
+      setHasActiveAppointment(hasActive);
+    })();
   }, []);
 
   const handleDateChange = (selected) => {
@@ -68,45 +61,37 @@ export default function StudentAppointmentScreen({ navigation }) {
     return dateObj.toLocaleTimeString([], {
       hour: '2-digit',
       minute: '2-digit',
-      hour12: true,
+      hour12: true
     });
   };
 
   const onBookAppointment = async () => {
     const now = new Date();
-
-    if (!facultyId || !studentId) {
-      Alert.alert('Error', 'Student or faculty not found.');
-      return;
-    }
-
     if (date < now) {
       Alert.alert('Invalid Time', 'You cannot select a past date or time.');
       return;
     }
 
-    if (!duration || isNaN(duration) || parseInt(duration) <= 0) {
-      Alert.alert('Invalid Duration', 'Please enter a valid duration.');
-      return;
-    }
-
     if (hasActiveAppointment) {
-      Alert.alert(
-        'Limit Reached',
-        'You already have an active appointment. Please cancel or wait until it is completed.'
-      );
+      Alert.alert('Limit Reached', 'You already have an active appointment. Please cancel or wait until it is completed.');
       return;
     }
 
-    if (meetingMode === 'online' && !location.trim()) {
-      Alert.alert('Missing Link', 'Please provide an online meeting link.');
+    if (!facultyId || !duration || (meetingMode === 'online' && !location)) {
+      Alert.alert('Validation Error', 'Please complete all required fields.');
       return;
     }
 
     try {
       const token = await AsyncStorage.getItem('authToken');
-      const formattedDate = date.toISOString().split('T')[0];
-      const formattedTime = date.toTimeString().split(' ')[0];
+
+      const formattedDate = date.getFullYear() + '-' +
+        String(date.getMonth() + 1).padStart(2, '0') + '-' +
+        String(date.getDate()).padStart(2, '0');
+
+      const hours = date.getHours().toString().padStart(2, '0');
+      const minutes = date.getMinutes().toString().padStart(2, '0');
+      const formattedTime = `${hours}:${minutes}:00`;
 
       const payload = {
         faculty_id: facultyId,
@@ -115,7 +100,7 @@ export default function StudentAppointmentScreen({ navigation }) {
         duration: parseInt(duration),
         meeting_mode: meetingMode,
         location: meetingMode === 'online' ? location : 'Office Room',
-        message: message.trim(),
+        message,
       };
 
       await axios.post(`${API_URL}/api/appointments`, payload, {
@@ -126,183 +111,276 @@ export default function StudentAppointmentScreen({ navigation }) {
       navigation.goBack();
     } catch (err) {
       const status = err.response?.status;
-      const msg = err.response?.data?.message || 'Booking failed. Please try again.';
+      const message = err.response?.data?.message || 'Booking failed. Please try again.';
 
       if (status === 409) {
-        Alert.alert('⏰ Slot Unavailable', msg);
+        Alert.alert('⏰ Slot Unavailable', message);
       } else {
-        Alert.alert('Error', msg);
+        Alert.alert('Error', message);
       }
     }
   };
 
   return (
-    <KeyboardAwareScrollView
+    <ScrollView 
       contentContainerStyle={styles.container}
-      enableOnAndroid
-      extraScrollHeight={100}
       keyboardShouldPersistTaps="handled"
     >
-      <Text style={styles.heading}>📅 Book Appointment</Text>
+      <View style={styles.header}>
+        <TouchableOpacity 
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+        >
+          {/* <Ionicons name="chevron-back" size={24} color="#4A6FA5" /> */}
+        </TouchableOpacity>
+      <Text style={styles.heading}>Schedule Appointment</Text>
+      </View>
+
       <View style={styles.card}>
-        {/* Date */}
-        <Text style={styles.label}>Date</Text>
-        <TouchableOpacity style={styles.selector} onPress={() => setShowDatePicker(true)}>
-          <Text style={styles.selectorText}>{date.toDateString()}</Text>
-        </TouchableOpacity>
-        <DateTimePickerModal
-          isVisible={showDatePicker}
-          mode="date"
-          minimumDate={new Date()}
-          date={date}
-          onConfirm={handleDateChange}
-          onCancel={() => setShowDatePicker(false)}
-        />
-
-        {/* Time */}
-        <Text style={styles.label}>Time</Text>
-        <TouchableOpacity style={styles.selector} onPress={() => setShowTimePicker(true)}>
-          <Text style={styles.selectorText}>{formatTime12Hour(date)}</Text>
-        </TouchableOpacity>
-        <DateTimePickerModal
-          isVisible={showTimePicker}
-          mode="time"
-          date={date}
-          onConfirm={handleTimeChange}
-          onCancel={() => setShowTimePicker(false)}
-        />
-
-        {/* Duration */}
-        <Text style={styles.label}>Duration (minutes)</Text>
-        <TextInput
-          style={styles.input}
-          value={duration}
-          onChangeText={setDuration}
-          keyboardType="numeric"
-          placeholder="e.g. 30"
-        />
-
-        {/* Meeting Mode */}
-        <Text style={styles.label}>Meeting Mode</Text>
-        <View style={styles.pickerWrapper}>
-          <Picker selectedValue={meetingMode} onValueChange={setMeetingMode}>
-            <Picker.Item label="Online" value="online" />
-            <Picker.Item label="Offline (Office Room)" value="offline" />
-          </Picker>
+        <Text style={styles.sectionTitle}>Appointment Details</Text>
+        
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Select Date</Text>
+          <TouchableOpacity 
+            style={styles.selector} 
+            onPress={() => setShowDatePicker(true)}
+          >
+            <Ionicons name="calendar" size={20} color="#6B7280" />
+            <Text style={styles.selectorText}>{date.toDateString()}</Text>
+            <MaterialIcons name="keyboard-arrow-down" size={20} color="#6B7280" />
+          </TouchableOpacity>
         </View>
 
-        {/* Location */}
-        {meetingMode === 'online' && (
-          <>
-            <Text style={styles.label}>Zoom/Meet Link</Text>
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Select Time</Text>
+          <TouchableOpacity 
+            style={styles.selector} 
+            onPress={() => setShowTimePicker(true)}
+          >
+            <Ionicons name="time" size={20} color="#6B7280" />
+            <Text style={styles.selectorText}>{formatTime12Hour(date)}</Text>
+            <MaterialIcons name="keyboard-arrow-down" size={20} color="#6B7280" />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Duration (minutes)</Text>
+          <View style={styles.inputContainer}>
+            <Ionicons name="timer" size={20} color="#6B7280" />
             <TextInput
               style={styles.input}
-              value={location}
-              onChangeText={setLocation}
-              placeholder="Enter meeting link"
+              value={duration}
+              onChangeText={setDuration}
+              keyboardType="numeric"
+              placeholder="30"
             />
-          </>
+          </View>
+        </View>
+
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Meeting Mode</Text>
+          <View style={[styles.inputContainer, styles.pickerContainer]}>
+            <Ionicons 
+              name={meetingMode === 'online' ? "videocam" : "business"} 
+              size={20} 
+              color="#6B7280" 
+            />
+            <Picker 
+              selectedValue={meetingMode} 
+              onValueChange={setMeetingMode}
+              style={styles.picker}
+              dropdownIconColor="#6B7280"
+            >
+              <Picker.Item label="Online Meeting" value="online" />
+              <Picker.Item label="In-Person (Office)" value="offline" />
+            </Picker>
+          </View>
+        </View>
+
+        {meetingMode === 'online' && (
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Meeting Link</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons name="link" size={20} color="#6B7280" />
+              <TextInput
+                style={styles.input}
+                value={location}
+                onChangeText={setLocation}
+                placeholder="https://zoom.us/j/123456"
+                placeholderTextColor="#9CA3AF"
+              />
+            </View>
+          </View>
         )}
 
-        {/* Message */}
-        <Text style={styles.label}>Message (optional)</Text>
-        <TextInput
-          style={styles.textarea}
-          value={message}
-          onChangeText={setMessage}
-          multiline
-          placeholder="Write a note for the mentor..."
-        />
-
-        <TouchableOpacity style={styles.button} onPress={onBookAppointment}>
-          <Text style={styles.buttonText}>📌 Confirm Booking</Text>
-        </TouchableOpacity>
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Additional Message</Text>
+          <View style={styles.textareaContainer}>
+            <TextInput
+              style={styles.textarea}
+              value={message}
+              onChangeText={setMessage}
+              multiline
+              placeholder="Any special requests or information for your mentor..."
+              placeholderTextColor="#9CA3AF"
+            />
+          </View>
+        </View>
       </View>
-    </KeyboardAwareScrollView>
+
+      <TouchableOpacity 
+        style={styles.button} 
+        onPress={onBookAppointment}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.buttonText}>Confirm Appointment</Text>
+        <Ionicons name="arrow-forward" size={20} color="#FFF" />
+      </TouchableOpacity>
+
+      <DateTimePickerModal
+        isVisible={showDatePicker}
+        mode="date"
+        minimumDate={new Date()}
+        date={date}
+        onConfirm={handleDateChange}
+        onCancel={() => setShowDatePicker(false)}
+        accentColor="#4A6FA5"
+        buttonTextColorIOS="#4A6FA5"
+      />
+
+      <DateTimePickerModal
+        isVisible={showTimePicker}
+        mode="time"
+        date={date}
+        onConfirm={handleTimeChange}
+        onCancel={() => setShowTimePicker(false)}
+        accentColor="#4A6FA5"
+        buttonTextColorIOS="#4A6FA5"
+      />
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flexGrow: 1,
     padding: 20,
     backgroundColor: '#f2f6ff',
     paddingBottom: 40,
   },
-  heading: {
-    fontSize: 28,
-    fontWeight: '700',
-    textAlign: 'center',
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 24,
-    color: '#1e293b',
+  },
+  backButton: {
+    padding: 8,
+    marginRight: 65,
+  },
+  heading: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#1F2937',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+    
   },
   card: {
-    backgroundColor: '#ffffff',
-    padding: 20,
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
+    padding: 24,
+    marginBottom: 24,
     shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 10,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 20,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+  },
+  formGroup: {
+    marginBottom: 20,
   },
   label: {
-    fontWeight: '600',
-    color: '#334155',
-    marginBottom: 6,
-    marginTop: 16,
-    fontSize: 16,
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#4B5563',
+    marginBottom: 8,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
   selector: {
-    backgroundColor: '#f8fafc',
-    padding: 14,
-    borderRadius: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#cbd5e1',
+    borderColor: '#E5E7EB',
   },
   selectorText: {
+    flex: 1,
+    marginLeft: 12,
     fontSize: 16,
-    color: '#0f172a',
+    color: '#1F2937',
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   input: {
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
-    paddingHorizontal: 14,
-    paddingVertical: Platform.OS === 'ios' ? 12 : 8,
-    borderRadius: 10,
+    flex: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
     fontSize: 16,
+    color: '#1F2937',
   },
-  pickerWrapper: {
+  pickerContainer: {
+    paddingHorizontal: 0,
+  },
+  picker: {
+    flex: 1,
+    height: 50,
+  },
+  textareaContainer: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#cbd5e1',
-    borderRadius: 10,
-    overflow: 'hidden',
+    borderColor: '#E5E7EB',
   },
   textarea: {
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
-    padding: 14,
-    borderRadius: 10,
+    height: 100,
+    padding: 16,
     textAlignVertical: 'top',
-    minHeight: 100,
     fontSize: 16,
+    color: '#1F2937',
   },
   button: {
-    backgroundColor: '#2563eb',
-    marginTop: 24,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#4A6FA5',
     paddingVertical: 16,
     borderRadius: 12,
-    alignItems: 'center',
-    shadowColor: '#2563eb',
+    shadowColor: '#4A6FA5',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
     elevation: 5,
   },
   buttonText: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: '700',
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    marginRight: 8,
   },
 });

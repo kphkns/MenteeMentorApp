@@ -29,17 +29,19 @@ router.post('/', verifyToken, (req, res) => {
   const { faculty_id, date, time, duration, meeting_mode, location, message } = req.body;
   const student_id = req.user.id;
 
+  // Validate required fields
   if (!faculty_id || !date || !time || !duration || !meeting_mode || !location) {
     return res.status(400).json({ message: 'Missing required fields' });
   }
 
+  // Check if appointment is in the past
   const now = new Date();
   const appointmentDateTime = new Date(`${date}T${time}`);
   if (appointmentDateTime < now) {
     return res.status(400).json({ message: 'Cannot book past date or time.' });
   }
 
-  // ✅ Check student status before proceeding
+  // Check student status
   const statusCheckQuery = `SELECT status FROM student WHERE Student_id = ?`;
   db.query(statusCheckQuery, [student_id], (err, result) => {
     if (err) return res.status(500).json({ message: 'Server error (status check)' });
@@ -50,46 +52,42 @@ router.post('/', verifyToken, (req, res) => {
       return res.status(403).json({ message: 'Inactive student accounts cannot book appointments.' });
     }
 
-    // ✅ One active appointment check
+    // Check if student already has an active appointment
     const activeCheck = `
       SELECT * FROM appointment
       WHERE student_id = ? AND status IN ('pending', 'accepted')
     `;
-
     db.query(activeCheck, [student_id], (err, activeAppointments) => {
       if (err) return res.status(500).json({ message: 'Server error (active check)' });
       if (activeAppointments.length > 0) {
         return res.status(403).json({ message: 'You already have an active appointment.' });
       }
 
-      // ✅ Conflict check
+      // Check for faculty conflict (excluding completed, failed, cancelled)
       const conflictQuery = `
         SELECT * FROM appointment
         WHERE faculty_id = ?
           AND date = ?
-          AND status NOT IN ('failed')
-          AND NOT (student_id = ? AND status = 'cancelled')
+          AND status NOT IN ('failed', 'cancelled', 'completed') -- ✅ updated
           AND (
             TIME(?) < ADDTIME(time, SEC_TO_TIME(duration * 60))
             AND TIME(?) >= time
           )
       `;
-
-      db.query(conflictQuery, [faculty_id, date, student_id, time, time], (err2, conflicts) => {
+      db.query(conflictQuery, [faculty_id, date, time, time], (err2, conflicts) => {
         if (err2) return res.status(500).json({ message: 'Conflict check failed' });
 
         if (conflicts.length > 0) {
           return res.status(409).json({ message: 'This time slot is already booked with your mentor.' });
         }
 
-        // ✅ Insert appointment
+        // Insert new appointment
         const insertQuery = `
           INSERT INTO appointment (
             faculty_id, student_id, date, time, duration, meeting_mode,
             location, status, message, created_at, updated_at
           ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, NOW(), NOW())
         `;
-
         db.query(insertQuery, [
           faculty_id, student_id, date, time, duration, meeting_mode, location, message
         ], (err3, result) => {
@@ -107,6 +105,7 @@ router.post('/', verifyToken, (req, res) => {
     });
   });
 });
+
 
 
 //...........................//............................//............................../
@@ -257,11 +256,11 @@ router.patch('/:id/reschedule', verifyToken, (req, res) => {
     if (results.length === 0) return res.status(404).json({ message: 'Appointment not found or not yours' });
 
     const appointment = results[0];
-    const faculty_id = appointment.Faculty_id;  // case-sensitive to your DB schema
+    const faculty_id = appointment.Faculty_id;
     const duration = appointment.duration;
 
     const existingDate = appointment.Date.toISOString().split('T')[0];
-    const existingTime = appointment.Time.slice(0, 8); // full 'HH:mm:ss'
+    const existingTime = appointment.Time.slice(0, 8);
 
     if (existingDate === date && existingTime === time) {
       return res.status(400).json({ message: 'No changes detected in date or time.' });
@@ -273,9 +272,13 @@ router.patch('/:id/reschedule', verifyToken, (req, res) => {
       return res.status(400).json({ message: 'Cannot reschedule to a past date or time.' });
     }
 
+    // Conflict check (IGNORE if conflicting appointment belongs to same student)
     const conflictQuery = `
       SELECT * FROM appointment
-      WHERE faculty_id = ? AND date = ? AND appointment_id != ? AND status != 'cancelled'
+      WHERE faculty_id = ?
+        AND date = ?
+        AND appointment_id != ?
+        AND status NOT IN ('cancelled', 'failed', 'completed')
         AND (
           TIME(?) < ADDTIME(time, SEC_TO_TIME(duration * 60))
           AND TIME(?) >= time
@@ -285,7 +288,8 @@ router.patch('/:id/reschedule', verifyToken, (req, res) => {
     db.query(conflictQuery, [faculty_id, date, appointmentId, time, time], (err2, conflicts) => {
       if (err2) return res.status(500).json({ message: 'Conflict check failed' });
 
-      if (conflicts.length > 0) {
+      const otherStudentConflicts = conflicts.filter(conflict => conflict.Student_id !== studentId);
+      if (otherStudentConflicts.length > 0) {
         return res.status(409).json({ message: 'This time slot is already booked with your mentor.' });
       }
 
@@ -306,6 +310,7 @@ router.patch('/:id/reschedule', verifyToken, (req, res) => {
     });
   });
 });
+
 //.........//.......................................//.................................//............
 
 router.get('/history', verifyToken, (req, res) => {

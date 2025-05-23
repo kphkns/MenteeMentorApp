@@ -5,12 +5,26 @@ import {
   Animated, RefreshControl
 } from 'react-native';
 import axios from 'axios';
-import { Ionicons, FontAwesome } from '@expo/vector-icons';
+import { Ionicons, Feather, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 
 const SERVER_URL = 'http://192.168.84.136:5000';
 
 export default function FacultyListScreen() {
+  // Color palette
+  const colors = {
+    primary: '#6366F1',
+    primaryLight: '#A5B4FC',
+    background: '#f2f6ff',
+    card: '#FFFFFF',
+    text: '#1E293B',
+    subText: '#64748B',
+    success: '#10B981',
+    error: '#EF4444',
+    border: '#E2E8F0',
+    shadow: '#94A3B8',
+  };
+
   const [faculties, setFaculties] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -22,9 +36,8 @@ export default function FacultyListScreen() {
   const [editDept, setEditDept] = useState('');
   const [selectedIds, setSelectedIds] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
-
-  // For animated opacity per item, we'll keep a ref map:
   const fadeAnimMap = useRef({});
+  const scrollY = useRef(new Animated.Value(0)).current; // <-- Animated value for scroll
 
   useEffect(() => {
     fetchFaculties();
@@ -52,7 +65,7 @@ export default function FacultyListScreen() {
       const res = await axios.get(`${SERVER_URL}/admin/faculty`);
       setFaculties(res.data);
     } catch {
-      alert('Failed to fetch faculty list');
+      Alert.alert('Error', 'Failed to fetch faculty list');
     } finally {
       setLoading(false);
     }
@@ -63,7 +76,7 @@ export default function FacultyListScreen() {
       const res = await axios.get(`${SERVER_URL}/admin/departments`);
       setDepartments(res.data);
     } catch {
-      alert('Failed to fetch departments');
+      Alert.alert('Error', 'Failed to fetch departments');
     }
   };
 
@@ -83,7 +96,7 @@ export default function FacultyListScreen() {
 
   const saveFacultyChanges = async () => {
     if (!editName.trim() || !editEmail.trim() || !editDept) {
-      alert('All fields are required');
+      Alert.alert('Validation', 'All fields are required');
       return;
     }
     try {
@@ -95,31 +108,36 @@ export default function FacultyListScreen() {
       setModalVisible(false);
       fetchFaculties();
     } catch {
-      alert('Failed to update faculty');
+      Alert.alert('Error', 'Failed to update faculty');
     }
   };
 
   const handleMultiDelete = () => {
-    Alert.alert('Delete Selected', `Delete ${selectedIds.length} faculty?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete', style: 'destructive', onPress: async () => {
-          try {
-            for (const id of selectedIds) {
-              await axios.delete(`${SERVER_URL}/admin/faculty/${id}`);
+    Alert.alert(
+      'Confirm Delete',
+      `Are you sure you want to delete ${selectedIds.length} faculty member(s)?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              for (const id of selectedIds) {
+                await axios.delete(`${SERVER_URL}/admin/faculty/${id}`);
+              }
+              setSelectedIds([]);
+              fetchFaculties();
+            } catch {
+              Alert.alert('Error', 'Failed to delete selected faculty');
             }
-            setSelectedIds([]);
-            fetchFaculties();
-          } catch {
-            alert('Failed to delete selected faculty');
           }
         }
-      }
-    ]);
+      ]
+    );
   };
 
   const toggleSelect = (id) => {
-    // Initialize Animated.Value if not present
     if (!fadeAnimMap.current[id]) {
       fadeAnimMap.current[id] = new Animated.Value(1);
     }
@@ -129,11 +147,9 @@ export default function FacultyListScreen() {
       Animated.timing(fadeAnimMap.current[id], { toValue: 1, duration: 150, useNativeDriver: true }),
     ]).start();
 
-    if (selectedIds.includes(id)) {
-      setSelectedIds(selectedIds.filter((sid) => sid !== id));
-    } else {
-      setSelectedIds([...selectedIds, id]);
-    }
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id]
+    );
   };
 
   const filteredFaculties = faculties.filter(f =>
@@ -149,224 +165,438 @@ export default function FacultyListScreen() {
     }
 
     return (
-      <Animated.View style={{ opacity: fadeAnimMap.current[item.Faculty_id], marginBottom: 12 }}>
+      <Animated.View style={{ opacity: fadeAnimMap.current[item.Faculty_id] }}>
         <TouchableOpacity
           onLongPress={() => toggleSelect(item.Faculty_id)}
-          onPress={() => {
-            if (selectedIds.length > 0) {
-              toggleSelect(item.Faculty_id);
-            }
-          }}
+          onPress={() => selectedIds.length > 0 && toggleSelect(item.Faculty_id)}
           style={[
-            styles.itemContainer,
-            isSelected && styles.selectedItem
+            styles.facultyCard,
+            isSelected && styles.selectedCard
           ]}
         >
-          <Image
-            source={require('../../../assets/default-profile.png')}
-            style={styles.avatar}
-          />
-          <View style={styles.textContainer}>
-            <Text style={styles.name}>{item.Name}</Text>
-            <Text style={styles.role}>{item.Dept_name || 'No Department'}</Text>
+          <View style={styles.avatarContainer}>
+            <Image
+              source={require('../../../assets/default-profile.png')}
+              style={styles.avatar}
+            />
+            {isSelected && (
+              <View style={styles.selectionBadge}>
+                <Feather name="check" size={16} color="#fff" />
+              </View>
+            )}
           </View>
-          <View style={styles.iconContainer}>
-            <TouchableOpacity onPress={() => openEditModal(item)}>
-              <FontAwesome name="edit" size={18} color="#007bff" />
-            </TouchableOpacity>
+          
+          <View style={styles.facultyInfo}>
+            <Text style={styles.facultyName}>{item.Name}</Text>
+            <View style={styles.detailRow}>
+              <MaterialIcons name="email" size={14} color={colors.subText} />
+              <Text style={styles.detailText}>{item.Email}</Text>
+            </View>
+            <View style={styles.detailRow}>
+              <FontAwesome5 name="building" size={14} color={colors.subText} />
+              <Text style={styles.detailText}>{item.Dept_name || 'No Department'}</Text>
+            </View>
           </View>
+          
+          <TouchableOpacity 
+            onPress={() => openEditModal(item)}
+            style={styles.editButton}
+          >
+            <Feather name="edit-2" size={18} color={colors.primary} />
+          </TouchableOpacity>
         </TouchableOpacity>
       </Animated.View>
     );
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={styles.headerWrapper}>
-        <Text style={styles.headerText}>Faculty List</Text>
-        <TouchableOpacity
-          style={[
-            styles.actionButton,
-            selectedIds.length === 0 && styles.disabledButton
-          ]}
-          onPress={selectedIds.length > 0 ? handleMultiDelete : () => {}}
-          disabled={selectedIds.length === 0}
-        >
-          <Ionicons name={selectedIds.length > 0 ? "trash" : "add"} size={24} color="#fff" />
-          {selectedIds.length > 0 && (
-            <Text style={styles.selectedCount}> ({selectedIds.length})</Text>
-          )}
-        </TouchableOpacity>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Faculty Members</Text>
+        <Text style={styles.headerSubtitle}>{faculties.length} total faculty</Text>
       </View>
 
-      {/* Search */}
-      <View style={styles.searchWrapper}>
-        <Ionicons name="search" size={20} color="#ccc" style={styles.searchIcon} />
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <Feather name="search" size={20} color={colors.subText} style={styles.searchIcon} />
         <TextInput
-          placeholder="Search for faculty..."
+          placeholder="Search faculty..."
+          placeholderTextColor={colors.subText}
           value={search}
           onChangeText={setSearch}
-          style={styles.searchInput}
+          style={[styles.searchInput, { color: colors.text }]}
           returnKeyType="search"
           onSubmitEditing={Keyboard.dismiss}
-          clearButtonMode="while-editing"
         />
       </View>
 
-      {/* List */}
+      {/* Selection Controls */}
+      {selectedIds.length > 0 && (
+        <View style={styles.selectionControls}>
+          <Text style={styles.selectedCount}>
+            {selectedIds.length} selected
+          </Text>
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={handleMultiDelete}
+          >
+            <Feather name="trash-2" size={18} color="#fff" />
+            <Text style={styles.deleteButtonText}>Delete</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Faculty List */}
       {loading ? (
-        <ActivityIndicator size="large" color="#007bff" />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
       ) : (
-        <FlatList
+        <Animated.FlatList
           data={filteredFaculties}
           renderItem={renderFacultyItem}
           keyExtractor={(item) => item.Faculty_id.toString()}
-          contentContainerStyle={{ paddingBottom: 100 }}
+          contentContainerStyle={styles.listContent}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#007bff" />
+            <RefreshControl 
+              refreshing={refreshing} 
+              onRefresh={onRefresh} 
+              colors={[colors.primary]}
+              tintColor={colors.primary}
+            />
           }
+          ListEmptyComponent={() => (
+            <View style={styles.emptyState}>
+              <Feather name="users" size={48} color={colors.subText} />
+              <Text style={styles.emptyText}>No faculty found</Text>
+              <Text style={styles.emptySubtext}>Try adjusting your search</Text>
+            </View>
+          )}
+          scrollEventThrottle={16}
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+            { useNativeDriver: true }
+          )}
         />
       )}
 
       {/* Edit Modal */}
-      <Modal visible={modalVisible} animationType="slide" transparent>
+      <Modal visible={modalVisible} animationType="fade" transparent>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Edit Faculty</Text>
-
-            <TextInput
-              placeholder="Name"
-              value={editName}
-              onChangeText={setEditName}
-              style={styles.input}
-            />
-            <TextInput
-              placeholder="Email"
-              value={editEmail}
-              onChangeText={setEditEmail}
-              style={styles.input}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-            <Picker
-              selectedValue={editDept}
-              onValueChange={(itemValue) => setEditDept(itemValue)}
-              style={styles.picker}
-            >
-              <Picker.Item label="Select Department" value="" />
-              {departments.map((dept) => (
-                <Picker.Item
-                  key={dept.Dept_id}
-                  label={dept.Dept_name}
-                  value={dept.Dept_id}
-                />
-              ))}
-            </Picker>
-
-            <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.saveBtn} onPress={saveFacultyChanges}>
-                <Text style={styles.saveText}>Save</Text>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Edit Faculty</Text>
+              <TouchableOpacity onPress={() => setModalVisible(false)}>
+                <Feather name="x" size={24} color={colors.subText} />
               </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.cancelBtn}
-                onPress={() => {
-                  setModalVisible(false);
-                  setEditFaculty(null);
-                }}
+            </View>
+            
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Full Name</Text>
+              <TextInput
+                placeholder="Enter full name"
+                value={editName}
+                onChangeText={setEditName}
+                style={styles.input}
+              />
+            </View>
+            
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Email Address</Text>
+              <TextInput
+                placeholder="Enter email"
+                value={editEmail}
+                onChangeText={setEditEmail}
+                style={styles.input}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
+            
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Department</Text>
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={editDept}
+                  onValueChange={setEditDept}
+                  style={styles.picker}
+                  dropdownIconColor={colors.subText}
+                >
+                  <Picker.Item label="Select Department" value="" />
+                  {departments.map((dept) => (
+                    <Picker.Item
+                      key={dept.Dept_id}
+                      label={dept.Dept_name}
+                      value={dept.Dept_id}
+                    />
+                  ))}
+                </Picker>
+              </View>
+            </View>
+            
+            <View style={styles.modalActions}>
+              <TouchableOpacity 
+                style={styles.cancelButton}
+                onPress={() => setModalVisible(false)}
               >
-                <Text style={styles.cancelText}>Cancel</Text>
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.saveButton}
+                onPress={saveFacultyChanges}
+              >
+                <Text style={styles.saveButtonText}>Save Changes</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
-
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f9fafd', padding: 16 },
-  headerWrapper: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+  container: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+  },
+  header: {
+    marginBottom: 24,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  headerSubtitle: {
+    fontSize: 15,
+    color: '#64748B',
+    marginTop: 4,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     marginBottom: 16,
-  },
-  headerText: { fontSize: 26, fontWeight: '700', color: '#222' },
-  actionButton: {
-    backgroundColor: '#007bff', flexDirection: 'row',
-    alignItems: 'center', justifyContent: 'center',
-    paddingHorizontal: 14, height: 36, borderRadius: 18,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 1,
-  },
-  disabledButton: {
-    backgroundColor: '#a0c4ff',
-  },
-  selectedCount: { color: '#fff', fontWeight: '600', marginLeft: 6 },
-  searchWrapper: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#fff', borderRadius: 12, paddingHorizontal: 12,
-    paddingVertical: 8, marginBottom: 16,
-    elevation: 1,
-  },
-  searchIcon: { marginRight: 8 },
-  searchInput: { flex: 1, fontSize: 16, paddingVertical: 4 },
-  itemContainer: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#fff', borderRadius: 12, padding: 12,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowColor: '#94A3B8',
     shadowOpacity: 0.1,
-    shadowRadius: 1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 8,
+    elevation: 3,
   },
-  selectedItem: {
-    backgroundColor: '#cce5ff',
+  searchIcon: {
+    marginRight: 12,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    paddingVertical: 0,
+  },
+  selectionControls: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingHorizontal: 4,
+  },
+  selectedCount: {
+    fontSize: 15,
+    color: '#1E293B',
+    fontWeight: '600',
+  },
+  deleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EF4444',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+  },
+  deleteButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    marginLeft: 8,
+    fontSize: 15,
+  },
+  facultyCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#94A3B8',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  selectedCard: {
+    backgroundColor: '#E0E7FF',
+    borderWidth: 1,
+    borderColor: '#6366F1',
+  },
+  avatarContainer: {
+    position: 'relative',
+    marginRight: 16,
   },
   avatar: {
-    width: 48, height: 48, borderRadius: 24, marginRight: 12,
-    backgroundColor: '#ddd',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#E2E8F0',
   },
-  textContainer: { flex: 1 },
-  name: { fontSize: 16, fontWeight: '600', color: '#333' },
-  role: { fontSize: 14, color: '#777', marginTop: 2 },
-  iconContainer: { flexDirection: 'row', alignItems: 'center' },
+  selectionBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#6366F1',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  facultyInfo: {
+    flex: 1,
+  },
+  facultyName: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#1E293B',
+    marginBottom: 6,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  detailText: {
+    fontSize: 14,
+    color: '#64748B',
+    marginLeft: 8,
+  },
+  editButton: {
+    padding: 8,
+    marginLeft: 8,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  listContent: {
+    paddingBottom: 24,
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 48,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1E293B',
+    marginTop: 16,
+  },
+  emptySubtext: {
+    fontSize: 15,
+    color: '#64748B',
+    marginTop: 4,
+  },
   modalOverlay: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'center', alignItems: 'center'
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
   },
-  modalContent: {
-    width: '90%', backgroundColor: '#fff', borderRadius: 12, padding: 20,
-    elevation: 5,
+  modalContainer: {
+    width: '100%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 10,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
   },
   modalTitle: {
-    fontSize: 18, fontWeight: '600', color: '#007bff',
-    marginBottom: 16, textAlign: 'center'
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  inputGroup: {
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontSize: 15,
+    color: '#64748B',
+    marginBottom: 8,
   },
   input: {
-    backgroundColor: '#f1f1f1', padding: 10, borderRadius: 8,
-    marginBottom: 12, borderColor: '#ccc', borderWidth: 1,
+    backgroundColor: '#F1F5F9',
+    padding: 14,
+    borderRadius: 12,
     fontSize: 16,
+    color: '#1E293B',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#F1F5F9',
   },
   picker: {
-    backgroundColor: '#f1f1f1', borderRadius: 8,
-    marginBottom: 12, height: 50,
+    height: 50,
+    color: '#1E293B',
   },
   modalActions: {
-    flexDirection: 'row', justifyContent: 'space-between', marginTop: 10
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 24,
   },
-  saveBtn: {
-    backgroundColor: '#007bff', padding: 10, borderRadius: 8,
-    flex: 1, alignItems: 'center', marginRight: 10
+  cancelButton: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 12,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    marginRight: 12,
   },
-  saveText: { color: '#fff', fontWeight: '600' },
-  cancelBtn: {
-    backgroundColor: '#ccc', padding: 10, borderRadius: 8,
-    flex: 1, alignItems: 'center'
+  cancelButtonText: {
+    color: '#64748B',
+    fontWeight: '600',
+    fontSize: 16,
   },
-  cancelText: { color: '#333', fontWeight: '600' }
+  saveButton: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 12,
+    backgroundColor: '#6366F1',
+    alignItems: 'center',
+  },
+  saveButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 16,
+  },
 });

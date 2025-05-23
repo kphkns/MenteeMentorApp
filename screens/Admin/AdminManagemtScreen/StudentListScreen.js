@@ -16,15 +16,28 @@ import {
   RefreshControl,
   ScrollView,
 } from "react-native";
-import { Ionicons, Feather } from "@expo/vector-icons";
+import { Ionicons, Feather, MaterialIcons } from "@expo/vector-icons";
 import axios from "axios";
 import RNPickerSelect from "react-native-picker-select";
 
-const SERVER_URL = "http://192.168.84.136:5000"; // your IP
+const SERVER_URL = "http://192.168.84.136:5000";
+
+const colors = {
+  primary: "#6C63FF",
+  secondary: "#4D8AF0",
+  background: "#f2f6ff",
+  card: "#FFFFFF",
+  textPrimary: "#2D3748",
+  textSecondary: "#718096",
+  accent: "#FF6584",
+  success: "#48BB78",
+  warning: "#ED8936",
+  divider: "#E2E8F0",
+};
 
 export default function StudentListScreen() {
-  const [students, setStudents] = useState([]);
   const [filteredStudents, setFilteredStudents] = useState([]);
+  const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -41,14 +54,13 @@ export default function StudentListScreen() {
   const [departments, setDepartments] = useState([]);
   const [courses, setCourses] = useState([]);
   const [faculties, setFaculties] = useState([]);
-  const [selectedStudents, setSelectedStudents] = useState([]); // multi select
-  
-  // Filter states
+  const [selectedStudents, setSelectedStudents] = useState([]);
   const [filterBatch, setFilterBatch] = useState(null);
   const [filterDept, setFilterDept] = useState(null);
   const [filterCourse, setFilterCourse] = useState(null);
   const [filterFaculty, setFilterFaculty] = useState(null);
 
+  // FIX: Remove selectedStudents from dependency array
   useEffect(() => {
     fetchStudents();
     fetchDropdownData();
@@ -56,9 +68,9 @@ export default function StudentListScreen() {
     const backAction = () => {
       if (selectedStudents.length > 0) {
         setSelectedStudents([]);
-        return true; // block going back
+        return true;
       }
-      return false; // allow normal back
+      return false;
     };
 
     const backHandler = BackHandler.addEventListener(
@@ -66,7 +78,7 @@ export default function StudentListScreen() {
       backAction
     );
     return () => backHandler.remove();
-  }, [selectedStudents]);
+  }, []); // <-- Only run once on mount
 
   useEffect(() => {
     applyFilters();
@@ -75,7 +87,6 @@ export default function StudentListScreen() {
   const applyFilters = () => {
     let filtered = [...students];
 
-    // Apply search filter
     if (search.trim() !== "") {
       filtered = filtered.filter(
         (s) =>
@@ -84,27 +95,18 @@ export default function StudentListScreen() {
           s.Roll_no.toLowerCase().includes(search.toLowerCase())
       );
     }
-
-    // Apply batch filter
     if (filterBatch) {
       filtered = filtered.filter((s) => s.Batch === filterBatch);
     }
-
-    // Apply department filter
     if (filterDept) {
       filtered = filtered.filter((s) => s.Dept_ID === filterDept);
     }
-
-    // Apply course filter
     if (filterCourse) {
       filtered = filtered.filter((s) => s.Course_ID === filterCourse);
     }
-
-    // Apply faculty filter
     if (filterFaculty) {
       filtered = filtered.filter((s) => s.Faculty_id === filterFaculty);
     }
-
     setFilteredStudents(filtered);
   };
 
@@ -264,35 +266,37 @@ export default function StudentListScreen() {
         ]}
       >
         <View style={styles.itemContent}>
-          <View style={styles.avatarCircle}>
+          <View style={[
+            styles.avatarCircle,
+            { backgroundColor: stringToColor(item.Name) }
+          ]}>
             <Text style={styles.avatarText}>
               {item.Name?.charAt(0)?.toUpperCase() || "S"}
             </Text>
           </View>
-
           <View style={styles.itemInfo}>
-            <Text style={styles.itemName}>{item.Name}</Text>
-            <Text style={styles.itemSubInfo}>
-             Roll No: {item.Roll_no} || Email: {item.Email}
-            </Text>
-            <Text style={styles.itemSubInfo}>
-             {/* Dept: {item.Dept_name} | Programme: {item.Course_name} */}
-            </Text>
+            <Text style={styles.itemName} numberOfLines={1}>{item.Name}</Text>
+            <View style={styles.metaContainer}>
+              <View style={styles.metaItem}>
+                <MaterialIcons name="fingerprint" size={14} color={colors.textSecondary} />
+                <Text style={styles.itemSubInfo}> {item.Roll_no}</Text>
+              </View>
+              <View style={styles.metaItem}>
+                <MaterialIcons name="email" size={14} color={colors.textSecondary} />
+                <Text style={styles.itemSubInfo}> {item.Email}</Text>
+              </View>
+            </View>
           </View>
-
           {isSelected ? (
-            <Ionicons name="checkmark-circle" size={28} color="#007bff" />
+            <View style={styles.checkmarkCircle}>
+              <Ionicons name="checkmark" size={20} color="white" />
+            </View>
           ) : (
             <TouchableOpacity
               onPress={() => openEditModal(item)}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              style={styles.editButton}
             >
-              <Feather
-                name="edit"
-                size={24}
-                color="#007bff"
-                style={{ marginLeft: 10 }}
-              />
+              <Feather name="edit-2" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
           )}
         </View>
@@ -304,247 +308,258 @@ export default function StudentListScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Students</Text>
+        <View>
+          {/* <Text style={styles.title}>Student Management</Text> */}
+          <Text style={styles.subtitle}>{filteredStudents.length} students found</Text>
+        </View>
         {selectedStudents.length > 0 ? (
           <TouchableOpacity
             style={styles.headerButton}
             onPress={handleMultipleDelete}
-            accessibilityLabel={`Delete ${selectedStudents.length} students`}
           >
-            <Ionicons name="trash-bin" size={30} color="#d9534f" />
+            <Ionicons name="trash" size={26} color={colors.accent} />
+            {selectedStudents.length > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{selectedStudents.length}</Text>
+              </View>
+            )}
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
             style={styles.headerButton}
-            onPress={() =>
-              Alert.alert("Add Student", "Add student functionality")
-            }
-            accessibilityLabel="Add new student"
+            onPress={() => Alert.alert("Add Student", "Add student functionality")}
           >
-            <Ionicons name="add-circle-outline" size={34} color="#007bff" />
+            <Ionicons name="add" size={28} color={colors.primary} />
           </TouchableOpacity>
         )}
       </View>
-
-      <TextInput
-        placeholder="Search students by name, email, or roll no"
-        value={search}
-        onChangeText={setSearch}
-        style={styles.searchInput}
-        clearButtonMode="while-editing"
-      />
-
-      {/* Filter Section */}
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filterContainer}
-      >
-        <View style={styles.filterRow}>
-          <View style={styles.filterItem}>
-            <RNPickerSelect
-              placeholder={{ label: "Filter by Batch", value: null }}
-              value={filterBatch}
-              onValueChange={(value) => setFilterBatch(value)}
-              items={batches.map((batch) => ({
-                label: batch.batch_name,
-                value: batch.Batch_id,
-              }))}
-              style={pickerStyle}
-              useNativeAndroidPickerStyle={false}
-            />
-          </View>
-
-          <View style={styles.filterItem}>
-            <RNPickerSelect
-              placeholder={{ label: "Filter by Department", value: null }}
-              value={filterDept}
-              onValueChange={(value) => {
-                setFilterDept(value);
-                setFilterCourse(null);
-                setFilterFaculty(null);
-              }}
-              items={departments.map((dept) => ({
-                label: dept.Dept_name,
-                value: dept.Dept_id,
-              }))}
-              style={pickerStyle}
-              useNativeAndroidPickerStyle={false}
-            />
-          </View>
-
-          <View style={styles.filterItem}>
-            <RNPickerSelect
-              placeholder={{ label: "Filter by Course", value: null }}
-              value={filterCourse}
-              onValueChange={(value) => setFilterCourse(value)}
-              items={courses
-                .filter((c) => !filterDept || c.Dept_ID === filterDept)
-                .map((course) => ({
-                  label: course.Course_name,
-                  value: course.Course_ID,
-                }))}
-              style={pickerStyle}
-              useNativeAndroidPickerStyle={false}
-            />
-          </View>
-
-          <View style={styles.filterItem}>
-            <RNPickerSelect
-              placeholder={{ label: "Filter by Faculty", value: null }}
-              value={filterFaculty}
-              onValueChange={(value) => setFilterFaculty(value)}
-              items={faculties
-                .filter((f) => !filterDept || f.Dept_ID === filterDept)
-                .map((faculty) => ({
-                  label: faculty.Name,
-                  value: faculty.Faculty_id,
-                }))}
-              style={pickerStyle}
-              useNativeAndroidPickerStyle={false}
-            />
-          </View>
-
-          {(filterBatch || filterDept || filterCourse || filterFaculty) && (
-            <TouchableOpacity 
-              style={styles.clearFiltersButton}
-              onPress={clearAllFilters}
-            >
-              <Text style={styles.clearFiltersText}>Clear Filters</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </ScrollView>
-
-      {loading ? (
-        <ActivityIndicator
-          size="large"
-          color="#007bff"
-          style={{ marginTop: 40 }}
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <Ionicons name="search" size={20} color={colors.textSecondary} style={styles.searchIcon} />
+        <TextInput
+          placeholder="Search students..."
+          placeholderTextColor={colors.textSecondary}
+          value={search}
+          onChangeText={setSearch}
+          style={styles.searchInput}
+          clearButtonMode="while-editing"
         />
-      ) : filteredStudents.length === 0 ? (
-        <Text style={styles.emptyText}>No students found</Text>
-      ) : (
-        <FlatList
-          data={filteredStudents}
-          keyExtractor={(item) => item.Student_id.toString()}
-          renderItem={renderItem}
-          contentContainerStyle={{ paddingBottom: 30 }}
-          extraData={selectedStudents}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={["#007bff"]}
-            />
-          }
-        />
-      )}
-
+      </View>
+      {/* Filter Bar */}
+      <View style={styles.filterBarFixed}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterContainer}
+        >
+          <View style={styles.filterRow}>
+            <View style={styles.filterItem}>
+              <RNPickerSelect
+                placeholder={{ label: "Batch", value: null }}
+                value={filterBatch}
+                onValueChange={(value) => setFilterBatch(value)}
+                items={batches.map((batch) => ({
+                  label: batch.batch_name,
+                  value: batch.Batch_id,
+                }))}
+                style={pickerStyle}
+                useNativeAndroidPickerStyle={false}
+                Icon={() => <MaterialIcons name="arrow-drop-down" size={24} color={colors.primary} />}
+              />
+            </View>
+            <View style={styles.filterItem}>
+              <RNPickerSelect
+                placeholder={{ label: "Department", value: null }}
+                value={filterDept}
+                onValueChange={(value) => {
+                  setFilterDept(value);
+                  setFilterCourse(null);
+                  setFilterFaculty(null);
+                }}
+                items={departments.map((dept) => ({
+                  label: dept.Dept_name,
+                  value: dept.Dept_id,
+                }))}
+                style={pickerStyle}
+                useNativeAndroidPickerStyle={false}
+              />
+            </View>
+            <View style={styles.filterItem}>
+              <RNPickerSelect
+                placeholder={{ label: "Course", value: null }}
+                value={filterCourse}
+                onValueChange={(value) => setFilterCourse(value)}
+                items={courses
+                  .filter((c) => !filterDept || c.Dept_ID === filterDept)
+                  .map((course) => ({
+                    label: course.Course_name,
+                    value: course.Course_ID,
+                  }))}
+                style={pickerStyle}
+                useNativeAndroidPickerStyle={false}
+              />
+            </View>
+            {(filterBatch || filterDept || filterCourse || filterFaculty) && (
+              <TouchableOpacity
+                style={styles.clearFiltersButton}
+                onPress={clearAllFilters}
+              >
+                <Text style={styles.clearFiltersText}>Reset</Text>
+                <MaterialIcons name="close" size={16} color={colors.textSecondary} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </ScrollView>
+      </View>
+      {/* Student List */}
+      <View style={{ flex: 1 }}>
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.loadingText}>Loading students...</Text>
+          </View>
+        ) : filteredStudents.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <MaterialIcons name="school" size={60} color={colors.divider} />
+            <Text style={styles.emptyText}>No students found</Text>
+            <Text style={styles.emptySubtext}>Try adjusting your search or filters</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={filteredStudents}
+            keyExtractor={(item) => item.Student_id.toString()}
+            renderItem={renderItem}
+            contentContainerStyle={styles.listContent}
+            extraData={selectedStudents}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={[colors.primary]}
+                tintColor={colors.primary}
+              />
+            }
+            ItemSeparatorComponent={() => <View style={styles.divider} />}
+          />
+        )}
+      </View>
       {/* Edit Modal */}
       <Modal visible={modalVisible} transparent animationType="fade">
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={styles.modalBackground}
         >
+          <Pressable style={styles.modalOverlay} onPress={() => setModalVisible(false)} />
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Edit Student</Text>
-
-            <TextInput
-              value={editName}
-              onChangeText={setEditName}
-              placeholder="Name"
-              style={styles.input}
-              autoCapitalize="words"
-              returnKeyType="next"
-            />
-            <TextInput
-              value={editEmail}
-              onChangeText={setEditEmail}
-              placeholder="Email"
-              keyboardType="email-address"
-              style={styles.input}
-              autoCapitalize="none"
-              returnKeyType="next"
-            />
-            <TextInput
-              value={editRoll}
-              onChangeText={setEditRoll}
-              placeholder="Roll No"
-              style={styles.input}
-              returnKeyType="next"
-            />
-
-            <RNPickerSelect
-              placeholder={{ label: "Select Batch...", value: null }}
-              value={editBatch}
-              onValueChange={setEditBatch}
-              items={batches.map((batch) => ({
-                label: batch.batch_name,
-                value: batch.Batch_id,
-              }))}
-              style={pickerStyle}
-              useNativeAndroidPickerStyle={false}
-            />
-
-            <RNPickerSelect
-              placeholder={{ label: "Select Department...", value: null }}
-              value={editDepartment}
-              onValueChange={(value) => {
-                setEditDepartment(value);
-                setEditCourse("");
-                setEditFaculty("");
-              }}
-              items={departments.map((dept) => ({
-                label: dept.Dept_name,
-                value: dept.Dept_id,
-              }))}
-              style={pickerStyle}
-              useNativeAndroidPickerStyle={false}
-            />
-
-            <RNPickerSelect
-              placeholder={{ label: "Select Course...", value: null }}
-              value={editCourse}
-              onValueChange={setEditCourse}
-              items={courses
-                .filter((c) => c.Dept_ID === editDepartment)
-                .map((course) => ({
-                  label: course.Course_name,
-                  value: course.Course_ID,
-                }))}
-              style={pickerStyle}
-              useNativeAndroidPickerStyle={false}
-            />
-
-            <RNPickerSelect
-              placeholder={{ label: "Select Faculty...", value: null }}
-              value={editFaculty}
-              onValueChange={setEditFaculty}
-              items={faculties
-                .filter((f) => f.Dept_ID === editDepartment)
-                .map((faculty) => ({
-                  label: faculty.Name,
-                  value: faculty.Faculty_id,
-                }))}
-              style={pickerStyle}
-              useNativeAndroidPickerStyle={false}
-            />
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={styles.saveButton}
-                onPress={saveStudentChanges}
-              >
-                <Text style={styles.buttonText}>Save</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={() => setModalVisible(false)}
-              >
-                <Text style={styles.buttonText}>Cancel</Text>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Edit Student</Text>
+              <TouchableOpacity onPress={() => setModalVisible(false)}>
+                <Ionicons name="close" size={24} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
+            <ScrollView style={styles.modalScroll}>
+              <View style={styles.inputContainer}>
+                <MaterialIcons name="person" size={20} color={colors.textSecondary} style={styles.inputIcon} />
+                <TextInput
+                  value={editName}
+                  onChangeText={setEditName}
+                  placeholder="Full Name"
+                  placeholderTextColor={colors.textSecondary}
+                  style={styles.input}
+                  autoCapitalize="words"
+                />
+              </View>
+              <View style={styles.inputContainer}>
+                <MaterialIcons name="email" size={20} color={colors.textSecondary} style={styles.inputIcon} />
+                <TextInput
+                  value={editEmail}
+                  onChangeText={setEditEmail}
+                  placeholder="Email Address"
+                  placeholderTextColor={colors.textSecondary}
+                  keyboardType="email-address"
+                  style={styles.input}
+                  autoCapitalize="none"
+                />
+              </View>
+              <View style={styles.inputContainer}>
+                <MaterialIcons name="fingerprint" size={20} color={colors.textSecondary} style={styles.inputIcon} />
+                <TextInput
+                  value={editRoll}
+                  onChangeText={setEditRoll}
+                  placeholder="Roll Number"
+                  placeholderTextColor={colors.textSecondary}
+                  style={styles.input}
+                />
+              </View>
+              <Text style={styles.sectionTitle}>Academic Information</Text>
+              <RNPickerSelect
+                placeholder={{ label: "Select Batch", value: null }}
+                value={editBatch}
+                onValueChange={setEditBatch}
+                items={batches.map((batch) => ({
+                  label: batch.batch_name,
+                  value: batch.Batch_id,
+                }))}
+                style={pickerStyle}
+                useNativeAndroidPickerStyle={false}
+                Icon={() => <MaterialIcons name="arrow-drop-down" size={24} color={colors.primary} />}
+              />
+              <RNPickerSelect
+                placeholder={{ label: "Select Department...", value: null }}
+                value={editDepartment}
+                onValueChange={(value) => {
+                  setEditDepartment(value);
+                  setEditCourse("");
+                  setEditFaculty("");
+                }}
+                items={departments.map((dept) => ({
+                  label: dept.Dept_name,
+                  value: dept.Dept_id,
+                }))}
+                style={pickerStyle}
+                useNativeAndroidPickerStyle={false}
+              />
+              <RNPickerSelect
+                placeholder={{ label: "Select Course...", value: null }}
+                value={editCourse}
+                onValueChange={setEditCourse}
+                items={courses
+                  .filter((c) => c.Dept_ID === editDepartment)
+                  .map((course) => ({
+                    label: course.Course_name,
+                    value: course.Course_ID,
+                  }))}
+                style={pickerStyle}
+                useNativeAndroidPickerStyle={false}
+              />
+              <RNPickerSelect
+                placeholder={{ label: "Select Faculty...", value: null }}
+                value={editFaculty}
+                onValueChange={setEditFaculty}
+                items={faculties
+                  .filter((f) => f.Dept_ID === editDepartment)
+                  .map((faculty) => ({
+                    label: faculty.Name,
+                    value: faculty.Faculty_id,
+                  }))}
+                style={pickerStyle}
+                useNativeAndroidPickerStyle={false}
+              />
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.cancelButton]}
+                  onPress={() => setModalVisible(false)}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.saveButton]}
+                  onPress={saveStudentChanges}
+                >
+                  <Text style={styles.saveButtonText}>Save Changes</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
           </View>
         </KeyboardAvoidingView>
       </Modal>
@@ -552,190 +567,366 @@ export default function StudentListScreen() {
   );
 }
 
+// Helper function to generate consistent colors from strings
+const stringToColor = (str) => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const hue = Math.abs(hash % 360);
+  return `hsl(${hue}, 70%, 60%)`;
+};
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f9f9f9', padding: 8},
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 20,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#007bff',
+    fontSize: 28,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+  },
+  subtitle: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginTop: 4,
   },
   headerButton: {
-    padding: 5,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(108, 99, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: colors.accent,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  badgeText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  searchIcon: {
+    marginRight: 8,
   },
   searchInput: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    paddingHorizontal: 15,
-    paddingVertical: 10,
+    flex: 1,
     fontSize: 16,
-    borderColor: '#ccc',
-    borderWidth: 1,
-    marginBottom: 19,
+    color: colors.textPrimary,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+  },
+  // --- Filter Bar Styles ---
+  filterBarFixed: {
+    width: '100%',
+    minHeight: 60,
+    backgroundColor: colors.background,
+    paddingVertical: 4,
+    marginBottom: 8,
+    // Always keep at the top, do not use flex or alignItems here
   },
   filterContainer: {
-    paddingBottom: -10,
-    marginBottom: -10,
-    
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    minHeight: 52,
+    paddingRight: 8,
   },
   filterRow: {
     flexDirection: 'row',
     alignItems: 'center',
-   
+    width: '100%',
+    minHeight: 52,
   },
   filterItem: {
-    marginRight: 10,
-    minWidth: 18,
+    minWidth: 120,
+    maxWidth: 180,
+    marginRight: 12,
+    justifyContent: 'center',
   },
   clearFiltersButton: {
-    backgroundColor: '#6c757d',
-    padding: 10,
-    borderRadius: 10,
-    marginLeft: 5,
-  },
-  clearFiltersText: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-  itemContainer: {
-    backgroundColor: '#fff',
-    padding: 12,
-    borderRadius: 10,
-    marginVertical: 5,
     flexDirection: 'row',
     alignItems: 'center',
-    elevation: 2,
+    backgroundColor: colors.divider,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 10,
+    marginLeft: 8,
+    height: 44,
+  },
+  clearFiltersText: {
+    color: colors.textSecondary,
+    fontWeight: '500',
+    marginRight: 4,
+    fontSize: 15,
+  },
+  // --- End Filter Bar Styles ---
+  itemContainer: {
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    marginVertical: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
   },
   itemSelected: {
-    borderColor: '#007bff',
-    borderWidth: 2,
-    backgroundColor: '#e6f0ff',
+    borderColor: colors.primary,
+    borderWidth: 1.5,
+    backgroundColor: 'rgba(108, 99, 255, 0.05)',
   },
   itemPressed: {
-    opacity: 0.8,
+    opacity: 0.9,
   },
   itemContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
+    padding: 16,
   },
   avatarCircle: {
-    backgroundColor: '#007bff',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 16,
   },
   avatarText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
+    color: 'white',
+    fontSize: 20,
+    fontWeight: '600',
   },
   itemInfo: {
     flex: 1,
   },
   itemName: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: 4,
+  },
+  metaContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 12,
+    marginBottom: 2,
   },
   itemSubInfo: {
-    fontSize: 14,
-    color: '#555',
-    marginTop: 2,
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
+  checkmarkCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  editButton: {
+    padding: 8,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: colors.divider,
+    marginVertical: 4,
+  },
+  listContent: {
+    paddingBottom: 24,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    color: colors.textSecondary,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
   },
   emptyText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginTop: 16,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginTop: 8,
     textAlign: 'center',
-    fontSize: 16,
-    color: '#999',
-    marginTop: 40,
   },
   modalBackground: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: 'flex-end',
+  },
+  modalOverlay: {
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.5)',
-    paddingHorizontal: 20,
   },
   modalCard: {
-    backgroundColor: '#fff',
-    borderRadius: 15,
-    padding: 20,
-    elevation: 5,
+    backgroundColor: colors.card,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '85%',
+    padding: 24,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#007bff',
-    marginBottom: 15,
-    textAlign: 'center',
+    fontSize: 22,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  modalScroll: {
+    paddingBottom: 24,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 16,
+  },
+  inputIcon: {
+    marginRight: 12,
   },
   input: {
-    backgroundColor: '#f2f2f2',
-    borderRadius: 10,
-    paddingHorizontal: 15,
-    paddingVertical: 10,
+    flex: 1,
     fontSize: 16,
-    marginBottom: 10,
-    borderColor: '#ccc',
-    borderWidth: 1,
+    color: colors.textPrimary,
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    marginTop: 8,
+    marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
   modalButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 20,
+    marginTop: 24,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   saveButton: {
-    backgroundColor: '#007bff',
-    padding: 10,
-    borderRadius: 10,
-    flex: 1,
-    marginRight: 10,
+    backgroundColor: colors.primary,
+    marginLeft: 12,
+  },
+  saveButtonText: {
+    color: 'white',
+    fontWeight: '600',
   },
   cancelButton: {
-    backgroundColor: '#6c757d',
-    padding: 10,
-    borderRadius: 10,
-    flex: 1,
+    backgroundColor: colors.divider,
+    marginRight: 12,
   },
-  buttonText: {
-    color: '#fff',
-    textAlign: 'center',
-    fontWeight: 'bold',
+  cancelButtonText: {
+    color: colors.textSecondary,
+    fontWeight: '600',
+  },
+});
+
+const pickerSelectStyles = StyleSheet.create({
+  inputIOS: {
+    fontSize: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderWidth: 0,
+    borderRadius: 12,
+    color: colors.textPrimary,
+    backgroundColor: colors.background,
+    marginBottom: 16,
+    paddingRight: 30,
+    minHeight: 44, // Ensures visible touch area
+  },
+  inputAndroid: {
+    fontSize: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderWidth: 0,
+    borderRadius: 12,
+    color: colors.textPrimary,
+    backgroundColor: colors.background,
+    marginBottom: 16,
+    paddingRight: 30,
+    minHeight: 44,
+  },
+  placeholder: {
+    color: colors.textSecondary,
+  },
+  iconContainer: {
+    top: 14,
+    right: 12,
   },
 });
 
 const pickerStyle = {
-  inputIOS: {
-    fontSize: 16,
-    paddingVertical: 10,
-    paddingHorizontal: 15,
+  ...pickerSelectStyles,
+  viewContainer: {
+    backgroundColor: colors.background,
+    borderRadius: 12,
+    paddingHorizontal: 0,
+    minHeight: 44,
+    justifyContent: 'center',
+    marginBottom: 0,
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 10,
-    color: '#000',
-    paddingRight: 30,
-    backgroundColor: '#f2f2f2',
-    marginBottom: 10,
-  },
-  inputAndroid: {
-    fontSize: 16,
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 10,
-    color: '#000',
-    paddingRight: 30,
-    backgroundColor: '#f2f2f2',
-    marginBottom: 10,
-  },
-  placeholder: {
-    color: '#999',
+    borderColor: colors.divider,
   },
 };

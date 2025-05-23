@@ -13,9 +13,10 @@ import {
 } from 'react-native';
 import axios from 'axios';
 import RNPickerSelect from 'react-native-picker-select';
-import Icon from 'react-native-vector-icons/Ionicons';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
-const SERVER_URL = 'http://192.168.84.136:5000'; // Replace with your server IP
+const SERVER_URL = 'http://192.168.84.136:5000';
 
 export default function FacultyScreen({ navigation }) {
   const [facultyName, setFacultyName] = useState('');
@@ -25,6 +26,7 @@ export default function FacultyScreen({ navigation }) {
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     axios.get(`${SERVER_URL}/admin/departments`)
@@ -55,7 +57,7 @@ export default function FacultyScreen({ navigation }) {
     try {
       const response = await axios.post(`${SERVER_URL}/admin/faculty`, newFaculty);
       if (response.status === 201) {
-        Alert.alert('Success ✅', 'Faculty added successfully.');
+        Alert.alert('Success', 'Faculty added successfully');
         setFacultyName('');
         setFacultyEmail('');
         setFacultyPassword('');
@@ -65,14 +67,14 @@ export default function FacultyScreen({ navigation }) {
       if (error.response) {
         const message = error.response.data.message;
         if (message === 'Email already exists') {
-          Alert.alert('Duplicate Email ⚠️', 'This email is already registered.');
+          Alert.alert('Duplicate Email', 'This email is already registered');
         } else if (message === 'Invalid email format') {
-          Alert.alert('Invalid Email ❌', 'Please enter a valid email address.');
+          Alert.alert('Invalid Email', 'Please enter a valid email address');
         } else {
-          Alert.alert('Error', message || 'Something went wrong. Please try again.');
+          Alert.alert('Error', message || 'Something went wrong');
         }
       } else {
-        Alert.alert('Network Error 🌐', 'Could not connect to server.');
+        Alert.alert('Network Error', 'Could not connect to server');
       }
     } finally {
       setSubmitting(false);
@@ -89,198 +91,343 @@ export default function FacultyScreen({ navigation }) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={{ flex: 1 }}
     >
-      <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+      <ScrollView 
+        style={styles.container}
+        contentContainerStyle={styles.contentContainer}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Header */}
+        <LinearGradient
+          colors={['#6366f1', '#818cf8']}
+          style={styles.header}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+        >
+          {/* <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={24} color="#fff" />
+          </TouchableOpacity> */}
+          <Text style={styles.headerTitle}>Add Faculty</Text>
+        </LinearGradient>
+
+        {/* Form Card */}
         <View style={styles.card}>
-          <Text style={styles.title}>👨‍🏫 Add Faculty</Text>
-          <Text style={styles.subtitle}>Fill the details below carefully</Text>
+          <View style={styles.formHeader}>
+            <MaterialIcons name="person-add-alt-1" size={32} color="#6366f1" />
+            <Text style={styles.formTitle}>Faculty Registration</Text>
+            <Text style={styles.formSubtitle}>Enter the faculty details below</Text>
+          </View>
 
           {/* Name Input */}
-          <Text style={styles.label}>Name</Text>
-          <View style={styles.inputWrapper}>
-            <Icon name="person-outline" size={20} color="#6c757d" style={styles.icon} />
-            <TextInput
-              placeholder="Enter faculty name"
-              value={facultyName}
-              onChangeText={setFacultyName}
-              style={styles.input}
-            />
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Full Name</Text>
+            <View style={styles.inputWrapper}>
+              <Ionicons name="person-outline" size={20} color="#94a3b8" style={styles.icon} />
+              <TextInput
+                placeholder="John Doe"
+                placeholderTextColor="#94a3b8"
+                value={facultyName}
+                onChangeText={setFacultyName}
+                style={styles.input}
+                autoCapitalize="words"
+              />
+            </View>
           </View>
 
           {/* Email Input */}
-          <Text style={styles.label}>Email</Text>
-          <View style={styles.inputWrapper}>
-            <Icon name="mail-outline" size={20} color="#6c757d" style={styles.icon} />
-            <TextInput
-              placeholder="Enter email"
-              value={facultyEmail}
-              onChangeText={setFacultyEmail}
-              style={styles.input}
-              keyboardType="email-address"
-            />
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Email Address</Text>
+            <View style={styles.inputWrapper}>
+              <Ionicons name="mail-outline" size={20} color="#94a3b8" style={styles.icon} />
+              <TextInput
+                placeholder="john.doe@university.edu"
+                placeholderTextColor="#94a3b8"
+                value={facultyEmail}
+                onChangeText={setFacultyEmail}
+                style={styles.input}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
           </View>
 
           {/* Password Input */}
-          <Text style={styles.label}>Password</Text>
-          <View style={styles.inputWrapper}>
-            <Icon name="lock-closed-outline" size={20} color="#6c757d" style={styles.icon} />
-            <TextInput
-              placeholder="Enter password"
-              value={facultyPassword}
-              onChangeText={setFacultyPassword}
-              style={styles.input}
-              secureTextEntry
-            />
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Password</Text>
+            <View style={styles.inputWrapper}>
+              <Ionicons name="lock-closed-outline" size={20} color="#94a3b8" style={styles.icon} />
+              <TextInput
+                placeholder="Create a password"
+                placeholderTextColor="#94a3b8"
+                value={facultyPassword}
+                onChangeText={setFacultyPassword}
+                style={styles.input}
+                secureTextEntry={!showPassword}
+              />
+              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                <Ionicons 
+                  name={showPassword ? "eye-off-outline" : "eye-outline"} 
+                  size={20} 
+                  color="#94a3b8" 
+                />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Department Picker */}
-          <Text style={styles.label}>Department</Text>
-          <View style={styles.pickerWrapper}>
-            <RNPickerSelect
-              onValueChange={setSelectedDept}
-              items={departmentOptions}
-              placeholder={{ label: 'Select Department...', value: null }}
-              style={{
-                inputIOS: styles.picker,
-                inputAndroid: styles.picker,
-                placeholder: { color: '#6c757d' },
-              }}
-              value={selectedDept}
-              useNativeAndroidPickerStyle={false}
-              Icon={() => <Icon name="chevron-down-outline" size={20} color="#6c757d" />}
-            />
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Department</Text>
+            <View style={styles.pickerWrapper}>
+              <RNPickerSelect
+                onValueChange={setSelectedDept}
+                items={departmentOptions}
+                placeholder={{ label: 'Select department...', value: null }}
+                style={{
+                  inputIOS: styles.picker,
+                  inputAndroid: styles.picker,
+                  placeholder: { color: '#94a3b8' },
+                }}
+                value={selectedDept}
+                useNativeAndroidPickerStyle={false}
+                Icon={() => <Ionicons name="chevron-down" size={20} color="#94a3b8" />}
+              />
+            </View>
+            {selectedDept && (
+              <Text style={styles.selectedDeptText}>
+                Selected: {departments.find(d => d.Dept_id === selectedDept)?.Dept_name}
+              </Text>
+            )}
           </View>
-          {selectedDept && (
-            <Text style={styles.selectedDeptText}>
-              Selected: {departments.find(d => d.Dept_id === selectedDept)?.Dept_name}
-            </Text>
-          )}
 
           {/* Submit Button */}
           <TouchableOpacity
-            style={[styles.button, submitting && styles.buttonDisabled]}
+            style={[styles.submitButton, submitting && styles.submitButtonDisabled]}
             onPress={handleAddFaculty}
             disabled={submitting}
+            activeOpacity={0.8}
           >
             {submitting ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.buttonText}>Add Faculty</Text>
+              <>
+                <Ionicons name="person-add" size={20} color="#fff" />
+                <Text style={styles.submitButtonText}>Register Faculty</Text>
+              </>
             )}
           </TouchableOpacity>
 
-          {/* Navigate to Faculty List */}
+          {/* Divider */}
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          {/* View Faculty List Button */}
           <TouchableOpacity
-            style={styles.secondaryButton}
+            style={styles.viewListButton}
             onPress={() => navigation.navigate('FacultyListScreen')}
+            activeOpacity={0.8}
           >
-            <Text style={styles.secondaryButtonText}>View Faculty List ➔</Text>
+            <Ionicons name="list" size={20} color="#6366f1" />
+            <Text style={styles.viewListButtonText}>View Faculty List</Text>
+            <Ionicons name="chevron-forward" size={20} color="#6366f1" />
           </TouchableOpacity>
         </View>
 
-        {loading && <ActivityIndicator size="large" color="#007bff" style={{ marginTop: 20 }} />}
+        {loading && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#6366f1" />
+            <Text style={styles.loadingText}>Loading departments...</Text>
+          </View>
+        )}
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
+const pickerSelectStyles = {
+  inputIOS: {
+    fontSize: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    color: '#1e293b',
+    paddingRight: 30,
+  },
+  inputAndroid: {
+    fontSize: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    color: '#1e293b',
+    paddingRight: 30,
+  },
+};
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f4f7',
+    backgroundColor: '#f2f6ff',
   },
   contentContainer: {
-    padding: 20,
     paddingBottom: 40,
+  },
+  header: {
+    paddingTop: 50,
+    paddingBottom: 24,
+    paddingHorizontal: 24,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  backButton: {
+    marginRight: 16,
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#fff',
   },
   card: {
     backgroundColor: '#ffffff',
-    borderRadius: 20,
-    padding: 20,
+    borderRadius: 24,
+    padding: 24,
+    marginHorizontal: 24,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
   },
-  title: {
-    fontSize: 24,
+  formHeader: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  formTitle: {
+    fontSize: 20,
     fontWeight: '700',
-    color: '#007bff',
-    marginBottom: 8,
+    color: '#1e293b',
+    marginTop: 8,
   },
-  subtitle: {
+  formSubtitle: {
     fontSize: 14,
-    color: '#6c757d',
-    marginBottom: 20,
+    color: '#64748b',
+    marginTop: 4,
+  },
+  inputContainer: {
+    marginBottom: 16,
   },
   label: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
-    color: '#495057',
-    marginBottom: 6,
-    marginTop: 12,
+    color: '#475569',
+    marginBottom: 8,
+    marginLeft: 4,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-    borderColor: '#ced4da',
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    marginBottom: 12,
+    borderColor: '#e2e8f0',
   },
   icon: {
-    marginRight: 8,
+    marginRight: 12,
   },
   input: {
     flex: 1,
-    paddingVertical: 12,
     fontSize: 16,
-    color: '#212529',
+    color: '#1e293b',
+    fontWeight: '500',
+    paddingVertical: 0,
   },
   pickerWrapper: {
-    backgroundColor: '#f8f9fa',
-    borderRadius: 10,
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#ced4da',
-    marginBottom: 8,
-    marginTop: 4,
-    paddingHorizontal: 10,
+    borderColor: '#e2e8f0',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
   picker: {
-    paddingVertical: 12,
     fontSize: 16,
-    color: '#212529',
+    color: '#1e293b',
+    fontWeight: '500',
+    paddingVertical: 0,
   },
   selectedDeptText: {
-    fontSize: 14,
+    fontSize: 13,
+    color: '#64748b',
+    marginTop: 8,
+    marginLeft: 4,
     fontStyle: 'italic',
-    color: '#495057',
-    marginBottom: 10,
   },
-  button: {
-    backgroundColor: '#007bff',
+  submitButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#6366f1',
+    paddingVertical: 16,
+    borderRadius: 14,
+    marginTop: 24,
+    shadowColor: '#6366f1',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  submitButtonDisabled: {
+    backgroundColor: '#c7d2fe',
+  },
+  submitButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 24,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#e2e8f0',
+  },
+  dividerText: {
+    fontSize: 14,
+    color: '#64748b',
+    marginHorizontal: 12,
+  },
+  viewListButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f1f5f9',
     paddingVertical: 14,
     borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 20,
   },
-  buttonDisabled: {
-    backgroundColor: '#6c757d',
-  },
-  buttonText: {
-    color: '#ffffff',
-    fontWeight: '600',
-    fontSize: 17,
-  },
-  secondaryButton: {
-    marginTop: 15,
-    alignItems: 'center',
-  },
-  secondaryButtonText: {
-    color: '#007bff',
-    fontWeight: '600',
+  viewListButtonText: {
+    color: '#6366f1',
     fontSize: 16,
+    fontWeight: '600',
+    marginHorizontal: 8,
+  },
+  loadingContainer: {
+    marginTop: 40,
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#64748b',
+    fontWeight: '500',
   },
 });

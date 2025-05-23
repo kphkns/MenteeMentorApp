@@ -17,6 +17,7 @@ import {
   Ionicons,
   FontAwesome5,
   MaterialCommunityIcons,
+  Feather,
 } from "@expo/vector-icons";
 
 const SERVER_URL = "http://192.168.84.136:5000";
@@ -136,7 +137,7 @@ export default function StudentProfile({ navigation }) {
   if (loading || !profile) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007bff" />
+        <ActivityIndicator size="large" color="#6C63FF" />
       </View>
     );
   }
@@ -146,45 +147,51 @@ export default function StudentProfile({ navigation }) {
       contentContainerStyle={styles.container}
       showsVerticalScrollIndicator={false}
     >
-      <View style={styles.headerCard}>
+      {/* Header with Profile Picture */}
+      <View style={styles.header}>
         <TouchableOpacity onPress={handleImagePick} activeOpacity={0.7}>
-          <Image
-            source={
-              profile?.photo
-                ? { uri: `${SERVER_URL}/uploads/${profile.photo}` }
-                : require("../../assets/default-profile.png")
-            }
-            style={styles.avatar}
-          />
-          <View style={styles.cameraIconWrapper}>
-            <Ionicons name="camera" size={18} color="#fff" />
+          <View style={styles.avatarContainer}>
+            <Image
+              source={
+                profile?.photo
+                  ? { uri: `${SERVER_URL}/uploads/${profile.photo}` }
+                  : require("../../assets/default-profile.png")
+              }
+              style={styles.avatar}
+            />
+            <View style={styles.cameraIconWrapper}>
+              <Feather name="camera" size={18} color="#fff" />
+            </View>
           </View>
         </TouchableOpacity>
-        <View style={{ flex: 1, marginLeft: 15 }}>
-          <Text style={styles.name}>{profile.Name}</Text>
-          <Text style={styles.login}>
-            Last Login:{" "}
-            {profile.Last_login
-              ? new Date(profile.Last_login).toLocaleDateString()
-              : "N/A"}
-          </Text>
-        </View>
+        
+        <Text style={styles.name}>{profile.Name}</Text>
+        <Text style={styles.login}>
+          Last Login:{" "}
+          {profile.Last_login
+            ? new Date(profile.Last_login).toLocaleDateString()
+            : "N/A"}
+        </Text>
       </View>
 
+      {/* Profile Information Card */}
       <View style={styles.infoCard}>
         <InfoItem
-          label="EMAIL"
-          value={profile.Email || "N/A"}
-          icon={<Ionicons name="mail-outline" size={18} color="#fff" />}
+          label="Email"
+          value={profile.Email || "Not provided"}
+          icon={<Ionicons name="mail-outline" size={20} color="#6C63FF" />}
         />
-        <View style={[styles.infoItem, { alignItems: "flex-start" }]}>
-          <View style={[styles.iconWrapper, { backgroundColor: "#007bff" }]}>
-            <Ionicons name="call-outline" size={18} color="#fff" />
+        
+        <View style={styles.divider} />
+        
+        <View style={styles.infoItem}>
+          <View style={styles.iconWrapper}>
+            <Ionicons name="call-outline" size={20} color="#6C63FF" />
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.infoLabel}>CONTACT</Text>
+          <View style={styles.infoContent}>
+            <Text style={styles.infoLabel}>Contact</Text>
             {isEditingMobile ? (
-              <View style={styles.editMobileRow}>
+              <View style={styles.editMobileContainer}>
                 <TextInput
                   style={styles.input}
                   value={mobile}
@@ -192,10 +199,11 @@ export default function StudentProfile({ navigation }) {
                   keyboardType="phone-pad"
                   maxLength={15}
                   autoFocus
+                  placeholder="Enter mobile number"
                 />
                 <View style={styles.editButtons}>
                   <TouchableOpacity
-                    style={[styles.saveBtn, { marginRight: 10 }]}
+                    style={styles.saveBtn}
                     onPress={updateMobile}
                     activeOpacity={0.8}
                   >
@@ -213,7 +221,7 @@ export default function StudentProfile({ navigation }) {
             ) : (
               <View style={styles.mobileView}>
                 <Text style={styles.infoValue}>
-                  {mobile || "Not Provided"}
+                  {mobile || "Not provided"}
                 </Text>
                 <TouchableOpacity
                   onPress={() => setIsEditingMobile(true)}
@@ -225,46 +233,72 @@ export default function StudentProfile({ navigation }) {
             )}
           </View>
         </View>
+        
+        <View style={styles.divider} />
+        
         <InfoItem
-          label="ENROLLMENT YEAR"
+          label="Enrollment Year"
           value={profile.Batch || "N/A"}
-          icon={<Ionicons name="calendar-outline" size={18} color="#fff" />}
+          icon={<Ionicons name="calendar-outline" size={20} color="#6C63FF" />}
         />
+        
+        <View style={styles.divider} />
+        
         <InfoItem
-          label="DEPARTMENT"
+          label="Department"
           value={profile.Department || "N/A"}
-          icon={<FontAwesome5 name="building" size={18} color="#fff" />}
+          icon={<FontAwesome5 name="building" size={18} color="#6C63FF" />}
         />
+        
+        <View style={styles.divider} />
+        
         <InfoItem
-          label="PROGRAMME"
+          label="Programme"
           value={profile.Course || "N/A"}
-          icon={<Ionicons name="school-outline" size={18} color="#fff" />}
+          icon={<Ionicons name="school-outline" size={20} color="#6C63FF" />}
         />
+        
+        <View style={styles.divider} />
+        
         <InfoItem
-          label="ROLL NO."
+          label="Roll No."
           value={profile.Roll_no || "N/A"}
-          icon={<Ionicons name="barcode-outline" size={18} color="#fff" />}
+          icon={<Ionicons name="barcode-outline" size={20} color="#6C63FF" />}
         />
       </View>
 
+      {/* Settings Section */}
       <Text style={styles.sectionTitle}>Settings</Text>
+      
+      <View style={styles.settingsCard}>
+        <MenuItem
+          icon={<MaterialCommunityIcons name="key-change" size={24} color="#6C63FF" />}
+          label="Change Password"
+          onPress={() => navigation.navigate("ChangePassword")}
+        />
+        
+        <View style={styles.divider} />
+        
+        <MenuItem
+          icon={<Ionicons name="notifications-outline" size={24} color="#6C63FF" />}
+          label="Notification Settings"
+          onPress={() => navigation.navigate("NotificationSettings")}
+        />
+        
+      </View>
 
-      <MenuItem
-        icon={<MaterialCommunityIcons name="key-change" size={22} color="#000" />}
-        label="Change Password"
-        onPress={() => navigation.navigate("ChangePassword")}
-      />
-
+      {/* Logout Button */}
       <TouchableOpacity
         style={styles.logoutBtn}
         onPress={handleLogout}
         activeOpacity={0.8}
       >
-        <Ionicons name="log-out-outline" size={22} color="white" />
+        <Ionicons name="log-out-outline" size={22} color="#FF6B6B" />
         <Text style={styles.logoutText}>Logout</Text>
       </TouchableOpacity>
 
-      <Text style={styles.versionText}>Version 2.0</Text>
+      {/* Version Info */}
+      <Text style={styles.versionText}>Version 2.0.1</Text>
     </ScrollView>
   );
 }
@@ -272,7 +306,7 @@ export default function StudentProfile({ navigation }) {
 const InfoItem = ({ label, value, icon }) => (
   <View style={styles.infoItem}>
     <View style={styles.iconWrapper}>{icon}</View>
-    <View style={{ flex: 1 }}>
+    <View style={styles.infoContent}>
       <Text style={styles.infoLabel}>{label}</Text>
       <Text style={styles.infoValue}>{value}</Text>
     </View>
@@ -283,6 +317,7 @@ const MenuItem = ({ icon, label, onPress }) => (
   <TouchableOpacity style={styles.menuItem} onPress={onPress} activeOpacity={0.7}>
     {icon}
     <Text style={styles.menuLabel}>{label}</Text>
+    <Ionicons name="chevron-forward" size={20} color="#999" style={styles.chevron} />
   </TouchableOpacity>
 );
 
@@ -291,121 +326,147 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#e6f3ff",
+    backgroundColor: "#F8F9FA",
   },
   container: {
-    paddingVertical: 20,
-    paddingHorizontal: 25,
+    paddingVertical: 24,
+    paddingHorizontal: 20,
     backgroundColor: "#f2f6ff",
     flexGrow: 1,
   },
-  headerCard: {
-    backgroundColor: "#0066cc",
-    flexDirection: "row",
+  header: {
     alignItems: "center",
-    padding: 20,
-    borderRadius: 16,
-    marginBottom: 20,
-    elevation: 5,
+    marginBottom: 24,
+  },
+  avatarContainer: {
+    position: "relative",
+    marginBottom: 16,
   },
   avatar: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    borderWidth: 3,
-    borderColor: "#fff",
-    backgroundColor: "#eee",
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 4,
+    borderColor: "#FFF",
+    backgroundColor: "#E9ECEF",
   },
   cameraIconWrapper: {
     position: "absolute",
-    bottom: 0,
-    right: 0,
-    backgroundColor: "#0056b3",
-    borderRadius: 14,
-    padding: 4,
+    bottom: 8,
+    right: 8,
+    backgroundColor: "#6C63FF",
+    borderRadius: 16,
+    padding: 6,
     borderWidth: 2,
-    borderColor: "#fff",
+    borderColor: "#FFF",
   },
   name: {
-    color: "#fff",
-    fontSize: 22,
+    color: "#2B2D42",
+    fontSize: 24,
     fontWeight: "700",
+    marginBottom: 4,
   },
   login: {
-    color: "#cbdcff",
+    color: "#8D99AE",
     fontSize: 14,
-    marginTop: 3,
+    fontWeight: "500",
   },
   infoCard: {
-    backgroundColor: "#fff",
+    backgroundColor: "#FFF",
     borderRadius: 16,
-    padding: 25,
+    padding: 20,
+    marginBottom: 24,
+    shadowColor: "#6C63FF",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+  settingsCard: {
+    backgroundColor: "#FFF",
+    borderRadius: 16,
+    paddingHorizontal: 20,
+    marginBottom: 24,
+    shadowColor: "#6C63FF",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
     elevation: 3,
   },
   infoItem: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 18,
+    paddingVertical: 12,
   },
   iconWrapper: {
-    width: 36,
-    height: 36,
+    width: 40,
+    height: 40,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#007bff",
-    borderRadius: 18,
-    marginRight: 18,
-    elevation: 3,
+    backgroundColor: "#F0EDFF",
+    borderRadius: 12,
+    marginRight: 16,
+  },
+  infoContent: {
+    flex: 1,
   },
   infoLabel: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
-    color: "#555",
-    marginBottom: 3,
+    color: "#8D99AE",
+    marginBottom: 4,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
   infoValue: {
-    fontSize: 17,
-    color: "#222",
+    fontSize: 16,
+    color: "#2B2D42",
     fontWeight: "500",
   },
-  input: {
-    height: 44,
-    borderColor: "#007bff",
-    borderWidth: 1.8,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    fontSize: 16,
-    color: "#222",
-    backgroundColor: "#f9faff",
+  divider: {
+    height: 1,
+    backgroundColor: "#EDF2F4",
+    marginVertical: 4,
   },
-  editMobileRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 5,
+  input: {
+    height: 48,
+    borderColor: "#E9ECEF",
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    fontSize: 16,
+    color: "#2B2D42",
+    backgroundColor: "#F8F9FA",
+    marginTop: 8,
+    marginBottom: 12,
+  },
+  editMobileContainer: {
+    flex: 1,
   },
   editButtons: {
     flexDirection: "row",
-    marginLeft: 12,
+    justifyContent: "flex-end",
   },
   saveBtn: {
-    backgroundColor: "#007bff",
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 10,
+    backgroundColor: "#6C63FF",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    marginLeft: 10,
   },
   saveBtnText: {
     color: "white",
-    fontWeight: "700",
+    fontWeight: "600",
     fontSize: 14,
   },
   cancelBtn: {
-    backgroundColor: "#ddd",
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 10,
+    backgroundColor: "#E9ECEF",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 12,
   },
   cancelBtnText: {
-    color: "#555",
+    color: "#8D99AE",
     fontWeight: "600",
     fontSize: 14,
   },
@@ -413,49 +474,54 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 5,
   },
   editText: {
-    color: "#007bff",
+    color: "#6C63FF",
     fontWeight: "600",
-    fontSize: 15,
+    fontSize: 14,
   },
   sectionTitle: {
-    fontSize: 21,
+    fontSize: 18,
     fontWeight: "700",
-    color: "#333",
-    marginBottom: 12,
-    marginTop: 35,
+    color: "#2B2D42",
+    marginBottom: 16,
   },
   menuItem: {
     flexDirection: "row",
     alignItems: "center",
-    marginVertical: 13,
+    paddingVertical: 16,
   },
   menuLabel: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: "500",
-    marginLeft: 10,
+    color: "#2B2D42",
+    flex: 1,
+    marginLeft: 12,
+  },
+  chevron: {
+    marginLeft: 'auto',
   },
   logoutBtn: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#ff4444",
-    padding: 12,
-    borderRadius: 12,
-    marginTop: 25,
     justifyContent: "center",
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#FFE3E3",
+    backgroundColor: "#FFF5F5",
+    marginBottom: 24,
   },
   logoutText: {
-    color: "white",
-    fontSize: 17,
+    color: "#FF6B6B",
+    fontSize: 16,
     fontWeight: "600",
     marginLeft: 10,
   },
   versionText: {
     textAlign: "center",
-    fontSize: 14,
-    color: "#888",
-    marginTop: 25,
+    fontSize: 13,
+    color: "#8D99AE",
+    fontWeight: "500",
   },
 });

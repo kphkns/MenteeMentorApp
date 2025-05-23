@@ -10,9 +10,11 @@ import {
   TouchableOpacity,
   Pressable,
   RefreshControl,
+  Platform
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import { Ionicons } from '@expo/vector-icons';
 
 const API_URL = 'http://192.168.84.136:5000';
 
@@ -48,12 +50,22 @@ export default function FacultyHistoryScreen() {
     fetchHistory();
   };
 
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      weekday: 'short', 
+      month: 'short', 
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
   const formatTime = (t) => {
     const [h, m] = t.split(':');
     const d = new Date();
     d.setHours(h, m);
     return d.toLocaleTimeString('en-US', {
-      hour: 'numeric',
+      hour: '2-digit',
       minute: '2-digit',
       hour12: true,
     });
@@ -65,24 +77,19 @@ export default function FacultyHistoryScreen() {
   };
 
   const renderStatusBadge = (status) => {
-    let bgColor = '#60a5fa'; // default blue for pending/accepted
-    let text = status.charAt(0).toUpperCase() + status.slice(1);
-
-    switch (status) {
-      case 'cancelled':
-        bgColor = '#f87171'; // red
-        break;
-      case 'completed':
-        bgColor = '#34d399'; // green
-        break;
-      case 'failed':
-        bgColor = '#fbbf24'; // yellow
-        break;
-    }
+    const statusConfig = {
+      cancelled: { color: '#EF4444', icon: 'close-circle', label: 'Cancelled' },
+      completed: { color: '#10B981', icon: 'checkmark-circle', label: 'Completed' },
+      failed: { color: '#F59E0B', icon: 'alert-circle', label: 'Failed' }
+    };
+    const config = statusConfig[status] || { color: '#3B82F6', icon: 'time', label: 'Pending' };
 
     return (
-      <View style={[styles.statusBadge, { backgroundColor: bgColor }]}>
-        <Text style={styles.statusText}>{text}</Text>
+      <View style={[styles.statusBadge, { backgroundColor: `${config.color}20` }]}>
+        <Ionicons name={config.icon} size={16} color={config.color} />
+        <Text style={[styles.statusText, { color: config.color }]}>
+          {config.label}
+        </Text>
       </View>
     );
   };
@@ -94,93 +101,165 @@ export default function FacultyHistoryScreen() {
       style={styles.card}
     >
       <View style={styles.cardHeader}>
-        <Text style={styles.dateText}>
-          📅 {new Date(item.date).toDateString()} ⏰ {formatTime(item.time)}
-        </Text>
+        <View style={styles.dateTimeContainer}>
+          <View style={styles.dateTimeRow}>
+            <Ionicons name="calendar" size={16} color="#6B7280" />
+            <Text style={styles.dateText}>{formatDate(item.date)}</Text>
+          </View>
+          <View style={styles.dateTimeRow}>
+            <Ionicons name="time" size={16} color="#6B7280" />
+            <Text style={styles.timeText}>{formatTime(item.time)}</Text>
+          </View>
+        </View>
         {renderStatusBadge(item.status)}
       </View>
 
-      <Text style={styles.studentName}>👨‍🎓 {item.student_name}</Text>
+      <View style={styles.studentRow}>
+        <Ionicons name="person" size={16} color="#4F46E5" />
+        <Text style={styles.studentText}>{item.student_name}</Text>
+      </View>
 
       {item.status === 'cancelled' && (
-        <View style={styles.cancelledContainer}>
-          <Text style={styles.cancelledText}>❌ Cancelled By: {item.cancelled_by}</Text>
-          <Text style={styles.cancelledText}>📝 Reason: {item.cancel_reason}</Text>
+        <View style={styles.statusDetailContainer}>
+          <View style={styles.detailRow}>
+            <Ionicons name="person-remove" size={16} color="#EF4444" />
+            <Text style={styles.detailText}>Cancelled by: {item.cancelled_by}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Ionicons name="document-text" size={16} color="#EF4444" />
+            <Text style={styles.detailText}>Reason: {item.cancel_reason || 'Not specified'}</Text>
+          </View>
         </View>
       )}
 
       {item.status === 'completed' && (
-        <Text style={styles.completedText}>✅ Completed Appointment</Text>
+        <View style={styles.statusDetailContainer}>
+          <View style={styles.detailRow}>
+            <Ionicons name="checkmark-done" size={16} color="#10B981" />
+            <Text style={[styles.detailText, { color: '#10B981' }]}>Successfully completed</Text>
+          </View>
+        </View>
       )}
 
       {item.status === 'failed' && (
-        <Text style={styles.failedText}>⚠️ Failed Appointment</Text>
+        <View style={styles.statusDetailContainer}>
+          <View style={styles.detailRow}>
+            <Ionicons name="warning" size={16} color="#F59E0B" />
+            <Text style={[styles.detailText, { color: '#F59E0B' }]}>Appointment failed</Text>
+          </View>
+        </View>
       )}
     </TouchableOpacity>
   );
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>📜 Appointment History</Text>
+      {/* <View style={styles.header}>
+        <Text style={styles.headerTitle}>Appointment History</Text>
+        <Text style={styles.headerSubtitle}>Review your past appointments</Text>
+      </View> */}
 
       {loading && !refreshing ? (
-        <ActivityIndicator size="large" color="#2563eb" style={{ marginTop: 40 }} />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#4F46E5" />
+        </View>
       ) : (
         <FlatList
           data={history}
           keyExtractor={(item) => item.appointment_id.toString()}
           renderItem={renderItem}
-          ListEmptyComponent={<Text style={styles.empty}>No history available.</Text>}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#2563eb']} />
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Ionicons name="time-outline" size={48} color="#CBD5E1" />
+              <Text style={styles.emptyText}>No history available</Text>
+              <Text style={styles.emptySubtext}>Your completed and cancelled appointments will appear here</Text>
+            </View>
           }
-          contentContainerStyle={history.length === 0 && { flex: 1, justifyContent: 'center' }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#4F46E5"
+            />
+          }
+          contentContainerStyle={styles.listContent}
         />
       )}
 
-      <Modal visible={modalVisible} animationType="slide" transparent>
+      <Modal visible={modalVisible} animationType="fade" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Appointment Details</Text>
             {selectedItem && (
-              <>
-                <Text style={styles.modalText}>🕒 Duration: {selectedItem.duration} mins</Text>
-                <Text style={styles.modalText}>💬 Message: {selectedItem.message || 'N/A'}</Text>
-                <Text style={styles.modalText}>📹 Mode: {selectedItem.meeting_mode || 'N/A'}</Text>
+              <View style={styles.modalBody}>
+                <View style={styles.modalRow}>
+                  <Ionicons name="calendar" size={18} color="#4F46E5" />
+                  <Text style={styles.modalText}>
+                    {formatDate(selectedItem.date)} at {formatTime(selectedItem.time)}
+                  </Text>
+                </View>
+                <View style={styles.modalRow}>
+                  <Ionicons name="person" size={18} color="#4F46E5" />
+                  <Text style={styles.modalText}>{selectedItem.student_name}</Text>
+                </View>
+                <View style={styles.modalRow}>
+                  <Ionicons name="timer" size={18} color="#4F46E5" />
+                  <Text style={styles.modalText}>{selectedItem.duration} minutes</Text>
+                </View>
+                <View style={styles.modalRow}>
+                  <Ionicons
+                    name={selectedItem.meeting_mode === 'online' ? 'videocam' : 'business'}
+                    size={18}
+                    color="#4F46E5"
+                  />
+                  <Text style={styles.modalText}>
+                    {selectedItem.meeting_mode === 'online' ? 'Virtual' : 'In-Person'} • {selectedItem.location}
+                  </Text>
+                </View>
+                {selectedItem.message && (
+                  <View style={styles.modalRow}>
+                    <Ionicons name="document-text" size={18} color="#4F46E5" />
+                    <Text style={styles.modalText}>{selectedItem.message}</Text>
+                  </View>
+                )}
                 {selectedItem.status === 'cancelled' && (
                   <>
-                    <Text style={styles.modalText}>
-                      ❌ Cancelled By: {selectedItem.cancelled_by || 'N/A'}
-                    </Text>
-                    <Text style={styles.modalText}>
-                      📝 Cancel Reason: {selectedItem.cancel_reason || 'N/A'}
-                    </Text>
+                    <View style={styles.modalRow}>
+                      <Ionicons name="person-remove" size={18} color="#EF4444" />
+                      <Text style={[styles.modalText, { color: '#EF4444' }]}>
+                        Cancelled by: {selectedItem.cancelled_by}
+                      </Text>
+                    </View>
+                    <View style={styles.modalRow}>
+                      <Ionicons name="document-text" size={18} color="#EF4444" />
+                      <Text style={[styles.modalText, { color: '#EF4444' }]}>
+                        Reason: {selectedItem.cancel_reason || 'Not specified'}
+                      </Text>
+                    </View>
                   </>
                 )}
-                {selectedItem.status === 'failed' && (
-                  <Text style={[styles.modalText, { color: '#b45309' }]}>
-                    ⚠️ Failed Appointment
+                <View style={styles.modalRow}>
+                  <Ionicons name="calendar" size={18} color="#4F46E5" />
+                  <Text style={styles.modalText}>
+                    Created: {new Date(selectedItem.created_at).toLocaleString()}
                   </Text>
-                )}
-                <Text style={styles.modalText}>
-                  📅 Created At: {new Date(selectedItem.created_at).toLocaleString()}
-                </Text>
-                <Text style={styles.modalText}>
-                  🔄 Updated At: {new Date(selectedItem.updated_at).toLocaleString()}
-                </Text>
-              </>
+                </View>
+                <View style={styles.modalRow}>
+                  <Ionicons name="refresh" size={18} color="#4F46E5" />
+                  <Text style={styles.modalText}>
+                    Updated: {new Date(selectedItem.updated_at).toLocaleString()}
+                  </Text>
+                </View>
+              </View>
             )}
-
             <Pressable
               onPress={() => setModalVisible(false)}
               style={({ pressed }) => [
-                {
-                  backgroundColor: pressed ? '#1e40af' : '#2563eb',
-                },
                 styles.closeButton,
+                { opacity: pressed ? 0.8 : 1 }
               ]}
             >
-              <Text style={styles.closeButtonText}>Close</Text>
+              <Text style={styles.closeButtonText}>Close Details</Text>
             </Pressable>
           </View>
         </View>
@@ -193,123 +272,178 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f2f6ff',
-    paddingHorizontal: 16,
-    paddingTop: 24,
   },
   header: {
+    padding: 24,
+    paddingBottom: 16,
+    backgroundColor: '#f2f6ff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  headerTitle: {
     fontSize: 24,
-    fontWeight: '700',
+    fontWeight: '600',
+    color: '#1E293B',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: '#64748B',
+    marginTop: 4,
+  },
+  listContent: {
+    padding: 16,
+    paddingBottom: 24,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#64748B',
+    marginTop: 16,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#94A3B8',
+    marginTop: 4,
     textAlign: 'center',
-    marginBottom: 18,
-    color: '#1e3a8a',
   },
   card: {
-    backgroundColor: '#ffffff',
-    padding: 16,
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    marginBottom: 14,
-    elevation: 3,
+    padding: 16,
+    marginBottom: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 12,
+  },
+  dateTimeContainer: {
+    flex: 1,
+  },
+  dateTimeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
   },
   dateText: {
-    fontWeight: '600',
-    fontSize: 15,
-    color: '#2563eb',
-  },
-  studentName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 6,
-  },
-  cancelledContainer: {
-    backgroundColor: '#fee2e2',
-    padding: 8,
-    borderRadius: 8,
-  },
-  cancelledText: {
-    color: '#b91c1c',
-    fontWeight: '600',
-    fontSize: 13,
-  },
-  completedText: {
-    color: '#059669',
-    fontWeight: '600',
     fontSize: 14,
+    color: '#1E293B',
+    marginLeft: 8,
   },
-  failedText: {
-    color: '#b45309',
-    fontWeight: '600',
+  timeText: {
     fontSize: 14,
+    color: '#1E293B',
+    marginLeft: 8,
   },
   statusBadge: {
-    paddingVertical: 3,
-    paddingHorizontal: 10,
-    borderRadius: 20,
-    minWidth: 80,
+    flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
   },
   statusText: {
-    color: 'white',
-    fontWeight: '700',
     fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 6,
   },
-  empty: {
-    textAlign: 'center',
-    marginTop: 40,
-    color: '#94a3b8',
+  studentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  studentText: {
     fontSize: 16,
+    fontWeight: '500',
+    color: '#1E293B',
+    marginLeft: 8,
+  },
+  statusDetailContainer: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  detailText: {
+    fontSize: 14,
+    color: '#64748B',
+    marginLeft: 8,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'center',
-    paddingHorizontal: 24,
+    padding: 20,
   },
   modalContent: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 24,
-    elevation: 7,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 5,
   },
   modalTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    marginBottom: 14,
-    color: '#2563eb',
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#1E293B',
+    marginBottom: 16,
     textAlign: 'center',
   },
+  modalBody: {
+    marginBottom: 16,
+  },
+  modalRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
   modalText: {
-    fontSize: 15,
-    color: '#374151',
-    marginBottom: 8,
+    flex: 1,
+    fontSize: 14,
+    color: '#64748B',
+    marginLeft: 10,
+    lineHeight: 20,
   },
   closeButton: {
-    marginTop: 24,
-    borderRadius: 10,
-    paddingVertical: 12,
+    backgroundColor: '#4F46E5',
+    paddingVertical: 14,
+    borderRadius: 8,
     alignItems: 'center',
-    shadowColor: '#2563eb',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 10,
+    justifyContent: 'center',
+    shadowColor: '#4F46E5',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
   },
   closeButtonText: {
-    color: '#ffffff',
-    fontWeight: '700',
+    color: '#FFFFFF',
+    fontWeight: '600',
     fontSize: 16,
   },
 });

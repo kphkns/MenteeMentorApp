@@ -13,6 +13,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import XLSX from 'xlsx';
 import { Picker } from '@react-native-picker/picker';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 
 const SERVER_URL = 'http://192.168.84.136:5000';
 const TEMPLATE_URL = `${SERVER_URL}/templates/student_upload_format.xlsx`;
@@ -147,67 +148,105 @@ export default function ExcelUploadScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>📋 Upload Student Excel Sheet</Text>
+      <View style={styles.header}>
+        <Text style={styles.title}>Upload Student Data</Text>
+        <Text style={styles.subtitle}>Select batch details and upload your Excel sheet</Text>
+      </View>
 
       <View style={styles.card}>
-        <Text style={styles.label}>Batch</Text>
-        <Picker
-          selectedValue={selectedBatch}
-          onValueChange={setSelectedBatch}
-          style={styles.picker}
-        >
-          <Picker.Item label="Select Batch..." value="" />
-          {batchList.map(batch => (
-            <Picker.Item key={batch.Batch_id} label={batch.batch_name} value={batch.Batch_id} />
-          ))}
-        </Picker>
+        {/* Batch Selection */}
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Batch</Text>
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={selectedBatch}
+              onValueChange={setSelectedBatch}
+              style={styles.picker}
+              dropdownIconColor="#6b7280"
+            >
+              <Picker.Item label="Select Batch..." value="" />
+              {batchList.map(batch => (
+                <Picker.Item key={batch.Batch_id} label={batch.batch_name} value={batch.Batch_id} />
+              ))}
+            </Picker>
+          </View>
+        </View>
 
-        <Text style={styles.label}>Department</Text>
-        <Picker
-          selectedValue={selectedDept}
-          onValueChange={handleDeptChange}
-          style={styles.picker}
-        >
-          <Picker.Item label="Select Department..." value="" />
-          {deptList.map(dept => (
-            <Picker.Item key={dept.Dept_id} label={dept.Dept_name} value={dept.Dept_id} />
-          ))}
-        </Picker>
+        {/* Department Selection */}
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Department</Text>
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={selectedDept}
+              onValueChange={handleDeptChange}
+              style={styles.picker}
+              dropdownIconColor="#6b7280"
+            >
+              <Picker.Item label="Select Department..." value="" />
+              {deptList.map(dept => (
+                <Picker.Item key={dept.Dept_id} label={dept.Dept_name} value={dept.Dept_id} />
+              ))}
+            </Picker>
+          </View>
+        </View>
 
-        <Text style={styles.label}>Course</Text>
-        <Picker
-          selectedValue={selectedCourse}
-          onValueChange={setSelectedCourse}
-          style={styles.picker}
-          enabled={filteredCourses.length > 0}
-        >
-          <Picker.Item label="Select Course..." value="" />
-          {filteredCourses.map(course => (
-            <Picker.Item
-              key={course.Course_ID}
-              label={course.Course_name}
-              value={course.Course_ID}
-            />
-          ))}
-        </Picker>
+        {/* Course Selection */}
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Course</Text>
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={selectedCourse}
+              onValueChange={setSelectedCourse}
+              style={styles.picker}
+              enabled={filteredCourses.length > 0}
+              dropdownIconColor="#6b7280"
+            >
+              <Picker.Item label="Select Course..." value="" />
+              {filteredCourses.map(course => (
+                <Picker.Item
+                  key={course.Course_ID}
+                  label={course.Course_name}
+                  value={course.Course_ID}
+                />
+              ))}
+            </Picker>
+          </View>
+        </View>
 
+        {/* File Upload Section */}
         <TouchableOpacity onPress={pickFile} style={styles.uploadBtn}>
+          <Ionicons name="cloud-upload-outline" size={24} color="#fff" />
           <Text style={styles.uploadText}>
-            {selectedFile ? `📄 ${selectedFile.name}` : '📤 Choose Excel File'}
+            {selectedFile ? selectedFile.name : 'Choose Excel File'}
           </Text>
+          {selectedFile && (
+            <MaterialIcons name="check-circle" size={20} color="#4ade80" style={styles.fileCheck} />
+          )}
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={handleSubmit} style={styles.submitBtn}>
-          <Text style={styles.submitText}>
-            {loading ? 'Submitting...' : '🚀 Submit'}
-          </Text>
+        <Text style={styles.fileNote}>Only .xlsx files are supported</Text>
+
+        {/* Submit Button */}
+        <TouchableOpacity 
+          onPress={handleSubmit} 
+          style={[styles.submitBtn, (!selectedBatch || !selectedDept || !selectedCourse || !selectedFile) && styles.disabledBtn]}
+          disabled={!selectedBatch || !selectedDept || !selectedCourse || !selectedFile}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <>
+              <Ionicons name="send-outline" size={20} color="#fff" />
+              <Text style={styles.submitText}>Submit Data</Text>
+            </>
+          )}
         </TouchableOpacity>
 
+        {/* Template Download */}
         <TouchableOpacity onPress={downloadTemplate} style={styles.templateBtn}>
-          <Text style={styles.templateText}>📥 Download Excel Template</Text>
+          <Ionicons name="document-text-outline" size={20} color="#fff" />
+          <Text style={styles.templateText}>Download Template</Text>
         </TouchableOpacity>
-
-        {loading && <ActivityIndicator size="large" color="#007bff" style={{ marginTop: 15 }} />}
       </View>
     </ScrollView>
   );
@@ -215,97 +254,128 @@ export default function ExcelUploadScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#e9f0f8',
-    padding: 24,
+    backgroundColor: '#f2f6ff',
+    padding: 20,
     flexGrow: 1,
+  },
+  header: {
+    marginBottom: 24,
+    paddingHorizontal: 8,
   },
   title: {
     fontSize: 28,
-    fontWeight: '900',
-    marginBottom: 30,
-    color: '#1a202c',
-    textAlign: 'center',
-    letterSpacing: 1.2,
-    textShadowColor: 'rgba(0,0,0,0.1)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 8,
+    fontFamily: 'Inter_700Bold',
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#64748b',
+    fontWeight: '400',
+    fontFamily: 'Inter_400Regular',
   },
   card: {
     backgroundColor: '#fff',
-    borderRadius: 20,
-    paddingVertical: 30,
-    paddingHorizontal: 28,
-    elevation: 8,
+    borderRadius: 24,
+    padding: 24,
     shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 15,
-    shadowOffset: { width: 0, height: 7 },
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 20,
+    elevation: 3,
+  },
+  inputContainer: {
+    marginBottom: 20,
   },
   label: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginTop: 24,
-    marginBottom: 12,
-    color: '#2d3748',
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#475569',
+    marginBottom: 8,
+    fontFamily: 'Inter_600SemiBold',
+  },
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#f8fafc',
   },
   picker: {
-    backgroundColor: '#f0f4f8',
-    borderRadius: 14,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    fontSize: 17,
-    color: '#1a202c',
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
     height: 50,
+    color: '#1e293b',
+    paddingHorizontal: 16,
+    fontFamily: 'Inter_400Regular',
   },
   uploadBtn: {
-    backgroundColor: '#38b2ac',
-    paddingVertical: 18,
-    borderRadius: 16,
-    marginTop: 36,
+    flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#38b2ac',
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 7 },
+    justifyContent: 'center',
+    backgroundColor: '#6366f1',
+    paddingVertical: 16,
+    borderRadius: 12,
+    marginTop: 8,
+    gap: 10,
   },
   uploadText: {
-    color: '#e6fffa',
-    fontSize: 19,
-    fontWeight: '700',
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
+    flexShrink: 1,
+  },
+  fileCheck: {
+    marginLeft: 'auto',
+  },
+  fileNote: {
+    fontSize: 13,
+    color: '#94a3b8',
+    marginTop: 8,
+    textAlign: 'center',
+    fontFamily: 'Inter_400Regular',
   },
   submitBtn: {
-    backgroundColor: '#2563eb',
-    paddingVertical: 18,
-    borderRadius: 16,
-    marginTop: 26,
+    flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#2563eb',
-    shadowOpacity: 0.55,
-    shadowRadius: 11,
-    shadowOffset: { width: 0, height: 7 },
+    justifyContent: 'center',
+    backgroundColor: '#4f46e5',
+    paddingVertical: 16,
+    borderRadius: 12,
+    marginTop: 24,
+    gap: 10,
+    shadowColor: '#4f46e5',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+  },
+  disabledBtn: {
+    opacity: 0.6,
   },
   submitText: {
-    color: '#eef2ff',
-    fontSize: 19,
-    fontWeight: '700',
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
   },
   templateBtn: {
-    marginTop: 30,
-    paddingVertical: 16,
-    borderRadius: 16,
-    backgroundColor: '#16a34a',
+    flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#16a34a',
-    shadowOpacity: 0.48,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
+    justifyContent: 'center',
+    backgroundColor: '#10b981',
+    paddingVertical: 16,
+    borderRadius: 12,
+    marginTop: 16,
+    gap: 10,
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
   },
   templateText: {
-    color: '#d1fae5',
-    fontWeight: '700',
-    fontSize: 17,
-    letterSpacing: 0.6,
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
   },
 });
