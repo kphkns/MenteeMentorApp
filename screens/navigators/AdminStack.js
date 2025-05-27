@@ -18,6 +18,8 @@ import FacultyListScreen from '../Admin/AdminManagemtScreen/FacultyListScreen';
 import StudentListScreen from '../Admin/AdminManagemtScreen/StudentListScreen';
 import ExcelUploadScreen from '../Admin/AdminManagemtScreen/UploadExcelScreen';
 import SessionManagement from '../Admin/AdminManagemtScreen/SessionManagement';
+import ShowMentorCard from '../Admin/AdminManagemtScreen/ShowMentorCard'
+import StudentMentorCard from '../Admin/AdminManagemtScreen/StudentMentorCard'
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -120,6 +122,8 @@ export default function AdminStack() {
       <Stack.Screen name="StudentListScreen" component={StudentListScreen} options={{ title: 'Student List' }} />
       <Stack.Screen name="UploadExcelScreen" component={ExcelUploadScreen} options={{ title: 'Upload via Excel' }} />
       <Stack.Screen name="SESSION MANAGEMENT" component={SessionManagement} options={{ title: 'Session Management' }} />
+      <Stack.Screen name="MENTOR CARDS" component={ShowMentorCard} options={{ title: 'Mentor Cards' }} />
+       <Stack.Screen name="StudentMentorCard" component={StudentMentorCard} options={{ title: 'StudentMentorCard' }} />
     </Stack.Navigator>
   );
 }

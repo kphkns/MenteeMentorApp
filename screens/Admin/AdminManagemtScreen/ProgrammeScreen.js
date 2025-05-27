@@ -9,7 +9,7 @@ import { Ionicons, Feather, MaterialIcons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import * as Haptics from 'expo-haptics';
 
-const SERVER_URL = 'http://192.168.84.136:5000';
+const SERVER_URL = 'http://192.168.216.136:5000';
 
 export default function ProgrammeScreen() {
   const [programmes, setProgrammes] = useState([]);

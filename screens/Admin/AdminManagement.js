@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import {
   Ionicons, MaterialCommunityIcons,
-  FontAwesome5, Feather
+  FontAwesome5, Feather, MaterialIcons, FontAwesome
 } from '@expo/vector-icons';
 
 const admins = [
@@ -13,28 +13,28 @@ const admins = [
     id: '1',
     name: 'DEPARTMENT',
     description: 'Manage academic departments and their details',
-    icon: <Ionicons name="business-outline" size={24} color="#4F46E5" />,
+    icon: <MaterialCommunityIcons name="office-building" size={24} color="#4F46E5" />,
     color: '#EEF2FF'
   },
   {
     id: '2',
     name: 'PROGRAMME',
     description: 'Configure and update programme information',
-    icon: <MaterialCommunityIcons name="file-document-outline" size={24} color="#9333EA" />,
+    icon: <MaterialIcons name="menu-book" size={24} color="#9333EA" />,
     color: '#F5F3FF'
   },
   {
-    id: '4',
+    id: '3',
     name: 'BATCHS',
     description: 'Oversee and edit batch schedules',
-    icon: <MaterialCommunityIcons name="calendar-range" size={24} color="#10B981" />,
+    icon: <MaterialCommunityIcons name="calendar-multiselect" size={24} color="#10B981" />,
     color: '#ECFDF5'
   },
   {
-    id: '3',
+    id: '4',
     name: 'FACULTY',
     description: 'Add or update faculty member records',
-    icon: <MaterialCommunityIcons name="account-tie-outline" size={24} color="#FF6F3C" />,
+    icon: <MaterialCommunityIcons name="account-tie" size={24} color="#FF6F3C" />,
     color: '#FFF7ED'
   },
   {
@@ -46,10 +46,17 @@ const admins = [
   },
   {
     id: '6',
+    name: 'MENTOR CARDS',
+    description: 'View and manage mentor assignments',
+    icon: <MaterialCommunityIcons name="card-account-details" size={24} color="#2563EB" />,
+    color: '#DBEAFE'
+  },
+  {
+    id: '7',
     name: 'SESSION MANAGEMENT',
     description: 'Organize and control academic sessions',
-    icon: <FontAwesome5 name="user-graduate" size={22} color="#2563EB" />,
-    color: '#DBEAFE'
+    icon: <MaterialCommunityIcons name="calendar-clock" size={24} color="#7C3AED" />,
+    color: '#F3E8FF'
   }
 ];
 
@@ -83,11 +90,6 @@ export default function AdminManagement({ navigation }) {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* <View style={styles.header}>
-        <Text style={styles.title}>Admin Management</Text>
-        <Text style={styles.subtitle}>Manage academic sections</Text>
-      </View> */}
-
       <View style={styles.container}>
         <View style={styles.searchBox}>
           <Feather name="search" size={18} color="#aaa" style={{ marginRight: 8 }} />
@@ -111,6 +113,7 @@ export default function AdminManagement({ navigation }) {
     </SafeAreaView>
   );
 }
+
 
 const styles = StyleSheet.create({
   safeArea: {

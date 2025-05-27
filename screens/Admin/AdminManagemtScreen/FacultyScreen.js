@@ -16,7 +16,7 @@ import RNPickerSelect from 'react-native-picker-select';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
-const SERVER_URL = 'http://192.168.84.136:5000';
+const SERVER_URL = 'http://192.168.216.136:5000';
 
 export default function FacultyScreen({ navigation }) {
   const [facultyName, setFacultyName] = useState('');

@@ -5,16 +5,16 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
-  TextInput,
   TouchableOpacity,
   Platform,
   KeyboardAvoidingView,
   ScrollView,
-  Switch
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
 import * as ScreenOrientation from 'expo-screen-orientation';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 
 export default function StudentDetailsScreen({ route }) {
   const { student } = route.params;
@@ -22,8 +22,6 @@ export default function StudentDetailsScreen({ route }) {
   const [monitoringSessions, setMonitoringSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sessionsLoading, setSessionsLoading] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('personal');
 
   useEffect(() => {
@@ -66,7 +64,7 @@ export default function StudentDetailsScreen({ route }) {
     }
   };
 
-    const fetchMonitoringSessions = async () => {
+  const fetchMonitoringSessions = async () => {
     setSessionsLoading(true);
     try {
       const response = await fetch(
@@ -83,48 +81,26 @@ export default function StudentDetailsScreen({ route }) {
       }
 
       const data = await response.json();
-      
-      // Sort sessions by date (newest first)
-      const sortedSessions = data.sort((a, b) => 
+      const sortedSessions = data.sort((a, b) =>
         new Date(b.date_of_monitoring) - new Date(a.date_of_monitoring)
       );
-      
       setMonitoringSessions(sortedSessions);
     } catch (error) {
-      // Only log the error without showing alert
       console.log('Fetch monitoring sessions:', error.message);
       setMonitoringSessions([]);
     } finally {
       setSessionsLoading(false);
     }
   };
-  const handleInputChange = (key, value) => {
-    setMentorCard(prev => ({ ...prev, [key]: value }));
-  };
 
-  const handleSave = async () => {
-    setIsSaving(true);
+  // Download mentor card as JSON
+  const handleDownload = async () => {
     try {
-      const response = await fetch(`http://192.168.216.136:5000/mentor-card/${student.Student_id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(mentorCard)
-      });
-      const result = await response.json();
-      if (response.ok) {
-        Alert.alert('Success', 'Mentor card updated successfully.');
-        setIsEditing(false);
-        fetchMentorCard();
-      } else {
-        Alert.alert('Error', result.message || 'Failed to update mentor card.');
-      }
+      const fileUri = FileSystem.documentDirectory + `mentor_card_${student.Roll_no}.json`;
+      await FileSystem.writeAsStringAsync(fileUri, JSON.stringify(mentorCard, null, 2));
+      await Sharing.shareAsync(fileUri);
     } catch (error) {
-      console.error('Error updating mentor card:', error);
-      Alert.alert('Error', 'Failed to update mentor card.');
-    } finally {
-      setIsSaving(false);
+      Alert.alert('Error', 'Failed to download mentor card.');
     }
   };
 
@@ -148,15 +124,7 @@ export default function StudentDetailsScreen({ route }) {
       <View style={styles.semesterValuesContainer}>
         {[...Array(10)].map((_, i) => {
           const key = `${keyPrefix}${i + 1}`;
-          return isEditing ? (
-            <TextInput
-              key={i}
-              style={styles.semesterInput}
-              value={mentorCard?.[key] ?? ''}
-              onChangeText={(value) => handleInputChange(key, value)}
-              keyboardType={keyPrefix.includes('gpa') ? 'numeric' : 'default'}
-            />
-          ) : (
+          return (
             <Text key={i} style={styles.semesterValue}>{mentorCard?.[key] || '-'}</Text>
           );
         })}
@@ -174,22 +142,9 @@ export default function StudentDetailsScreen({ route }) {
             day: 'numeric'
           })}
         </Text>
-        {/* <Text style={styles.sessionTime}>
-          {new Date(session.date_of_monitoring).toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit'
-          })}
-        </Text> */}
       </View>
       <Text style={styles.sessionTitle}>Discussion Points</Text>
       <Text style={styles.sessionContent}>{session.high_points}</Text>
-      
-      {/* {session.faculty_id && (
-        <View style={styles.facultyInfo}>
-          <Ionicons name="person-outline" size={16} color="#64748b" />
-          <Text style={styles.facultyText}>Faculty ID: {session.faculty_id}</Text>
-        </View>
-      )} */}
     </View>
   );
 
@@ -232,41 +187,30 @@ export default function StudentDetailsScreen({ route }) {
           <Text style={styles.headerSubtitle}>{student.Roll_no} • {student.Course_name}</Text>
         </LinearGradient>
 
-        {/* Edit Toggle */}
-        <View style={styles.editToggleContainer}>
-          <Text style={styles.editToggleText}>Edit Mode</Text>
-          <Switch
-            value={isEditing}
-            onValueChange={setIsEditing}
-            trackColor={{ false: '#e2e8f0', true: '#c7d2fe' }}
-            thumbColor={isEditing ? '#6366f1' : '#f1f5f9'}
-          />
-        </View>
-
         {/* Tabs */}
         <View style={styles.tabContainer}>
           <TouchableOpacity
             style={[styles.tabButton, activeTab === 'personal' && styles.activeTab]}
             onPress={() => setActiveTab('personal')}
           >
-            <Ionicons 
-              name="person-outline" 
-              size={20} 
-              color={activeTab === 'personal' ? '#6366f1' : '#64748b'} 
+            <Ionicons
+              name="person-outline"
+              size={20}
+              color={activeTab === 'personal' ? '#6366f1' : '#64748b'}
             />
             <Text style={[styles.tabText, activeTab === 'personal' && styles.activeTabText]}>
               Personal
             </Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity
             style={[styles.tabButton, activeTab === 'academic' && styles.activeTab]}
             onPress={() => setActiveTab('academic')}
           >
-            <Ionicons 
-              name="school-outline" 
-              size={20} 
-              color={activeTab === 'academic' ? '#6366f1' : '#64748b'} 
+            <Ionicons
+              name="school-outline"
+              size={20}
+              color={activeTab === 'academic' ? '#6366f1' : '#64748b'}
             />
             <Text style={[styles.tabText, activeTab === 'academic' && styles.activeTabText]}>
               Academic
@@ -277,10 +221,10 @@ export default function StudentDetailsScreen({ route }) {
             style={[styles.tabButton, activeTab === 'sessions' && styles.activeTab]}
             onPress={() => setActiveTab('sessions')}
           >
-            <Ionicons 
-              name="calendar-outline" 
-              size={20} 
-              color={activeTab === 'sessions' ? '#6366f1' : '#64748b'} 
+            <Ionicons
+              name="calendar-outline"
+              size={20}
+              color={activeTab === 'sessions' ? '#6366f1' : '#64748b'}
             />
             <Text style={[styles.tabText, activeTab === 'sessions' && styles.activeTabText]}>
               Sessions
@@ -296,26 +240,25 @@ export default function StudentDetailsScreen({ route }) {
                 <Ionicons name="person-circle-outline" size={24} color="#6366f1" />
                 <Text style={styles.cardTitle}>Student Information</Text>
               </View>
-              
-              <DetailRow 
-                icon="pricetag-outline" 
-                label="Roll Number" 
-                value={student.Roll_no} 
+              <DetailRow
+                icon="pricetag-outline"
+                label="Roll Number"
+                value={student.Roll_no}
               />
-              <DetailRow 
-                icon="school" 
-                label="Program" 
-                value={student.Course_name} 
+              <DetailRow
+                icon="school"
+                label="Program"
+                value={student.Course_name}
               />
-              <DetailRow 
-                icon="people" 
-                label="Mentor" 
-                value={student.MentorName} 
+              <DetailRow
+                icon="people"
+                label="Mentor"
+                value={student.Faculty_name}
               />
-              <DetailRow 
-                icon="calendar" 
-                label="Batch" 
-                value={student.batch_name} 
+              <DetailRow
+                icon="calendar"
+                label="Batch"
+                value={student.batch_name}
               />
             </View>
 
@@ -324,20 +267,19 @@ export default function StudentDetailsScreen({ route }) {
                 <Ionicons name="call-outline" size={24} color="#6366f1" />
                 <Text style={styles.cardTitle}>Contact Information</Text>
               </View>
-              
-              <DetailRow 
-                icon="phone-portrait" 
-                label="Phone" 
-                value={student.mobile_no} 
+              <DetailRow
+                icon="phone-portrait"
+                label="Phone"
+                value={student.mobile_no}
               />
-              <DetailRow 
-                icon="mail" 
-                label="Email" 
-                value={student.Email} 
+              <DetailRow
+                icon="mail"
+                label="Email"
+                value={student.Email}
               />
-              <DetailRow 
-                icon="location" 
-                label="Address" 
+              <DetailRow
+                icon="location"
+                label="Address"
                 value={mentorCard.present_address}
               />
             </View>
@@ -347,41 +289,30 @@ export default function StudentDetailsScreen({ route }) {
                 <Ionicons name="people-outline" size={24} color="#6366f1" />
                 <Text style={styles.cardTitle}>Family Information</Text>
               </View>
-              
-              <DetailRow 
-                icon="person" 
-                label="Parents' Name" 
+              <DetailRow
+                icon="person"
+                label="Parents' Name"
                 value={mentorCard.name_of_pareents}
-                editable={isEditing}
-                onChangeText={(value) => handleInputChange('name_of_pareents', value)}
               />
-              <DetailRow 
-                icon="call" 
-                label="Parents' Phone" 
+              <DetailRow
+                icon="call"
+                label="Parents' Phone"
                 value={mentorCard.mobile_no_of_parents}
-                editable={isEditing}
-                onChangeText={(value) => handleInputChange('mobile_no_of_parents', value)}
               />
-              <DetailRow 
-                icon="mail" 
-                label="Parents' Email" 
+              <DetailRow
+                icon="mail"
+                label="Parents' Email"
                 value={mentorCard.email_of_parents}
-                editable={isEditing}
-                onChangeText={(value) => handleInputChange('email_of_parents', value)}
               />
-              <DetailRow 
-                icon="person" 
-                label="Guardian Name" 
+              <DetailRow
+                icon="person"
+                label="Guardian Name"
                 value={mentorCard.name_of_localgurdian}
-                editable={isEditing}
-                onChangeText={(value) => handleInputChange('name_of_localgurdian', value)}
               />
-              <DetailRow 
-                icon="call" 
-                label="Guardian Phone" 
+              <DetailRow
+                icon="call"
+                label="Guardian Phone"
                 value={mentorCard.moble_no_of_localgurdent}
-                editable={isEditing}
-                onChangeText={(value) => handleInputChange('moble_no_of_localgurdent', value)}
               />
             </View>
 
@@ -390,13 +321,10 @@ export default function StudentDetailsScreen({ route }) {
                 <Ionicons name="medical-outline" size={24} color="#6366f1" />
                 <Text style={styles.cardTitle}>Additional Information</Text>
               </View>
-              
-              <DetailRow 
-                icon="alert-circle" 
-                label="Health Issues" 
+              <DetailRow
+                icon="alert-circle"
+                label="Health Issues"
                 value={mentorCard.any_helthissue}
-                editable={isEditing}
-                onChangeText={(value) => handleInputChange('any_helthissue', value)}
               />
             </View>
           </View>
@@ -407,7 +335,6 @@ export default function StudentDetailsScreen({ route }) {
                 <Ionicons name="bar-chart-outline" size={24} color="#6366f1" />
                 <Text style={styles.cardTitle}>Academic Progress</Text>
               </View>
-              
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <View>
                   {renderSemesterHeader()}
@@ -435,44 +362,26 @@ export default function StudentDetailsScreen({ route }) {
           </View>
         )}
 
-        {/* Save Button */}
-        {isEditing && (
-          <TouchableOpacity 
-            style={styles.saveButton} 
-            onPress={handleSave}
-            disabled={isSaving}
-          >
-            {isSaving ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <>
-                <Feather name="save" size={20} color="#fff" />
-                <Text style={styles.saveButtonText}>Save Changes</Text>
-              </>
-            )}
-          </TouchableOpacity>
-        )}
+        {/* Download Button */}
+        {/* <TouchableOpacity
+          style={styles.saveButton}
+          onPress={handleDownload}
+        >
+          <Feather name="download" size={20} color="#fff" />
+          <Text style={styles.saveButtonText}>Download Mentor Card</Text>
+        </TouchableOpacity> */}
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
-const DetailRow = ({ icon, label, value, editable, onChangeText }) => (
+const DetailRow = ({ icon, label, value }) => (
   <View style={styles.detailRow}>
     <View style={styles.detailIconContainer}>
       <Ionicons name={icon} size={18} color="#6366f1" />
     </View>
     <Text style={styles.detailLabel}>{label}</Text>
-    {editable ? (
-      <TextInput
-        style={styles.detailInput}
-        value={value}
-        onChangeText={onChangeText}
-        placeholder="-"
-      />
-    ) : (
-      <Text style={styles.detailValue} numberOfLines={2}>{value || '-'}</Text>
-    )}
+    <Text style={styles.detailValue} numberOfLines={2}>{value || '-'}</Text>
   </View>
 );
 
@@ -498,20 +407,6 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 16,
     color: '#e0e7ff',
-    fontWeight: '500',
-  },
-  editToggleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    paddingHorizontal: 24,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  editToggleText: {
-    fontSize: 14,
-    color: '#64748b',
-    marginRight: 8,
     fontWeight: '500',
   },
   tabContainer: {
@@ -601,16 +496,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'right',
   },
-  detailInput: {
-    flex: 1,
-    fontSize: 15,
-    color: '#1e293b',
-    fontWeight: '600',
-    textAlign: 'right',
-    borderBottomWidth: 1,
-    borderBottomColor: '#c7d2fe',
-    paddingVertical: 4,
-  },
   semesterHeader: {
     flexDirection: 'row',
     marginBottom: 8,
@@ -650,19 +535,6 @@ const styles = StyleSheet.create({
   },
   semesterValuesContainer: {
     flexDirection: 'row',
-  },
-  semesterInput: {
-    width: 60,
-    height: 36,
-    borderWidth: 1,
-    borderColor: '#c7d2fe',
-    borderRadius: 8,
-    marginHorizontal: 2,
-    textAlign: 'center',
-    color: '#1e293b',
-    fontWeight: '500',
-    fontSize: 14,
-    backgroundColor: '#f8fafc',
   },
   semesterValue: {
     width: 60,
@@ -758,10 +630,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#1e293b',
-  },
-  sessionTime: {
-    fontSize: 14,
-    color: '#64748b',
   },
   sessionTitle: {
     fontSize: 14,

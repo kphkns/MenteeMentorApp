@@ -8,7 +8,7 @@ import axios from 'axios';
 import { Ionicons, Feather, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 
-const SERVER_URL = 'http://192.168.84.136:5000';
+const SERVER_URL = 'http://192.168.216.136:5000';
 
 export default function FacultyListScreen() {
   // Color palette

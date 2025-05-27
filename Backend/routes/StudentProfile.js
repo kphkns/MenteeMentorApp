@@ -136,34 +136,69 @@ router.put('/student/update-mobile', verifyToken, (req, res) => {
   );
 });
 
-// ✅ Change Password
-router.post('/student/change-password', verifyToken, (req, res) => {
+// ✅ Change Password (No Hashing Version)
+router.post('/student/change-password', verifyToken, async (req, res) => {
   const studentId = req.user.id;
-  const { oldPassword, newPassword } = req.body;
+  const { oldPassword, newPassword } = req.body; // Removed confirmPassword from here
 
-  if (!oldPassword || !newPassword) {
-    return res.status(400).json({ message: 'Please provide both old and new passwords' });
+  // Validate input
+  if (!oldPassword || !newPassword) { // Only check these two
+    return res.status(400).json({ 
+      success: false,
+      message: 'All fields are required' 
+    });
   }
 
-  // 1. Check old password
-  db.query('SELECT password FROM student WHERE Student_id = ?', [studentId], (err, results) => {
-    if (err || results.length === 0) {
-      return res.status(500).json({ message: 'Student not found' });
-    }
-
-    if (results[0].password !== oldPassword) {
-      return res.status(401).json({ message: 'Old password is incorrect' });
-    }
-
-    // 2. Update new password
-    db.query('UPDATE student SET password = ? WHERE Student_id = ?', [newPassword, studentId], (err) => {
-      if (err) {
-        return res.status(500).json({ message: 'Failed to update password' });
-      }
-      res.status(200).json({ message: 'Password changed successfully' });
+  if (newPassword.length < 6) {
+    return res.status(400).json({
+      success: false,
+      message: 'Password must be at least 6 characters'
     });
-  });
+  }
+
+  try {
+    // 1. Verify current password
+    const [student] = await db.promise().query(
+      'SELECT password FROM student WHERE Student_id = ?', 
+      [studentId]
+    );
+
+    if (!student.length) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Student not found' 
+      });
+    }
+
+    if (student[0].password !== oldPassword) {
+      return res.status(401).json({ 
+        success: false,
+        message: 'Current password is incorrect' 
+      });
+    }
+
+    // 2. Update password
+    const [result] = await db.promise().query(
+      'UPDATE student SET password = ? WHERE Student_id = ?', 
+      [newPassword, studentId]
+    );
+
+    if (result.affectedRows === 0) {
+      throw new Error('No rows affected');
+    }
+
+    // 3. Success response
+    return res.status(200).json({ 
+      success: true,
+      message: 'Password updated successfully'
+    });
+
+  } catch (error) {
+    console.error('Password change error:', error);
+    return res.status(500).json({ 
+      success: false,
+      message: 'Failed to update password. Please try again.'
+    });
+  }
 });
-
-
 module.exports = router;

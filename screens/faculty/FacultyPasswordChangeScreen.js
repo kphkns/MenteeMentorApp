@@ -19,47 +19,56 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 const SERVER_URL = 'http://192.168.216.136:5000';
 
-export default function AdminChangePassword({ navigation }) {
-  const [oldPassword, setOldPassword] = useState('');
+const FacultyPasswordChangeScreen = ({ navigation }) => {
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showOldPassword, setShowOldPassword] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handlePasswordChange = async () => {
-    if (!oldPassword || !newPassword || !confirmPassword) {
-      return Alert.alert('Error', 'Please fill in all fields.');
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      Alert.alert('Missing Information', 'Please fill in all fields');
+      return;
     }
 
     if (newPassword !== confirmPassword) {
-      return Alert.alert('Error', 'New password and confirm password do not match.');
+      Alert.alert('Password Mismatch', 'New passwords do not match');
+      return;
     }
 
     if (newPassword.length < 6) {
-      return Alert.alert('Error', 'Password must be at least 6 characters.');
+      Alert.alert('Weak Password', 'Password must be at least 6 characters');
+      return;
     }
 
     setLoading(true);
     try {
       const token = await AsyncStorage.getItem('authToken');
-
-      const res = await axios.post(`${SERVER_URL}/admin/change-password`, {
-        oldPassword,
-        newPassword,
-      }, {
-        headers: {
-          Authorization: `Bearer ${token}`
+      
+      await axios.post(
+        `${SERVER_URL}/faculty/change-password`,
+        {
+          oldPassword: currentPassword,
+          newPassword: newPassword
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
         }
-      });
+      );
 
-      Alert.alert('Success', res.data.message, [
-        { text: 'OK', onPress: () => navigation.goBack() }
-      ]);
-    } catch (err) {
-      console.log('Change password error:', err.response?.data || err.message);
-      Alert.alert('Error', err.response?.data?.message || 'Failed to change password');
+      Alert.alert(
+        'Success', 
+        'Your password has been updated successfully',
+        [{ text: 'OK', onPress: () => navigation.goBack() }]
+      );
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || 'Password update failed. Please try again.';
+      Alert.alert('Error', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -79,104 +88,117 @@ export default function AdminChangePassword({ navigation }) {
             contentContainerStyle={styles.scrollContainer}
             keyboardShouldPersistTaps="handled"
           >
+            {/* <View style={styles.header}>
+              <TouchableOpacity 
+                onPress={() => navigation.goBack()}
+                style={styles.backButton}
+              >
+                <Ionicons name="chevron-back" size={28} color="#4a5568" />
+              </TouchableOpacity>
+              <Text style={styles.title}>Update Password</Text>
+              <View style={{ width: 28 }} />
+            </View> */}
+
             <View style={styles.card}>
               <View style={styles.iconContainer}>
-                <Ionicons name="lock-closed" size={36} color="#5e72e4" />
+                <Ionicons name="lock-closed" size={40} color="#5e72e4" />
               </View>
 
-              <Text style={styles.title}>Update Your Password</Text>
-              <Text style={styles.subtitle}>Secure your admin account with a new password</Text>
+              <Text style={styles.subtitle}>Create a new secure password for your faculty account</Text>
 
-              {/* Old Password */}
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Current Password</Text>
-                <View style={styles.passwordInputWrapper}>
+              {/* Current Password */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>CURRENT PASSWORD</Text>
+                <View style={styles.inputContainer}>
                   <TextInput
                     style={styles.input}
-                    placeholder="Enter current password"
+                    placeholder="Enter your current password"
                     placeholderTextColor="#a0aec0"
-                    secureTextEntry={!showOldPassword}
-                    value={oldPassword}
-                    onChangeText={setOldPassword}
+                    secureTextEntry={!showCurrentPassword}
+                    value={currentPassword}
+                    onChangeText={setCurrentPassword}
                     autoCapitalize="none"
+                    autoCorrect={false}
                   />
-                  <TouchableOpacity 
+                  <TouchableOpacity
+                    onPress={() => setShowCurrentPassword(!showCurrentPassword)}
                     style={styles.eyeIcon}
-                    onPress={() => setShowOldPassword(!showOldPassword)}
                   >
-                    <Ionicons 
-                      name={showOldPassword ? "eye-off" : "eye"} 
-                      size={20} 
-                      color="#a0aec0" 
+                    <Ionicons
+                      name={showCurrentPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={22}
+                      color="#a0aec0"
                     />
                   </TouchableOpacity>
                 </View>
               </View>
 
               {/* New Password */}
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>New Password</Text>
-                <View style={styles.passwordInputWrapper}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>NEW PASSWORD</Text>
+                <View style={styles.inputContainer}>
                   <TextInput
                     style={styles.input}
-                    placeholder="Enter new password (min 6 chars)"
+                    placeholder="Create new password (min 6 chars)"
                     placeholderTextColor="#a0aec0"
                     secureTextEntry={!showNewPassword}
                     value={newPassword}
                     onChangeText={setNewPassword}
                     autoCapitalize="none"
+                    autoCorrect={false}
                   />
-                  <TouchableOpacity 
-                    style={styles.eyeIcon}
+                  <TouchableOpacity
                     onPress={() => setShowNewPassword(!showNewPassword)}
+                    style={styles.eyeIcon}
                   >
-                    <Ionicons 
-                      name={showNewPassword ? "eye-off" : "eye"} 
-                      size={20} 
-                      color="#a0aec0" 
+                    <Ionicons
+                      name={showNewPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={22}
+                      color="#a0aec0"
                     />
                   </TouchableOpacity>
                 </View>
               </View>
 
               {/* Confirm Password */}
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Confirm New Password</Text>
-                <View style={styles.passwordInputWrapper}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>CONFIRM NEW PASSWORD</Text>
+                <View style={styles.inputContainer}>
                   <TextInput
                     style={styles.input}
-                    placeholder="Re-enter new password"
+                    placeholder="Re-enter your new password"
                     placeholderTextColor="#a0aec0"
                     secureTextEntry={!showConfirmPassword}
                     value={confirmPassword}
                     onChangeText={setConfirmPassword}
                     autoCapitalize="none"
+                    autoCorrect={false}
                   />
-                  <TouchableOpacity 
-                    style={styles.eyeIcon}
+                  <TouchableOpacity
                     onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                    style={styles.eyeIcon}
                   >
-                    <Ionicons 
-                      name={showConfirmPassword ? "eye-off" : "eye"} 
-                      size={20} 
-                      color="#a0aec0" 
+                    <Ionicons
+                      name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={22}
+                      color="#a0aec0"
                     />
                   </TouchableOpacity>
                 </View>
               </View>
 
               <TouchableOpacity
-                style={styles.primaryButton}
+                style={[styles.button, loading && styles.buttonDisabled]}
                 onPress={handlePasswordChange}
                 disabled={loading}
               >
                 {loading ? (
-                  <ActivityIndicator color="#fff" />
+                  <ActivityIndicator color="#fff" size="small" />
                 ) : (
-                  <>
+                  <View style={styles.buttonContent}>
                     <Text style={styles.buttonText}>Update Password</Text>
-                    <Ionicons name="arrow-forward" size={20} color="#fff" style={styles.buttonIcon} />
-                  </>
+                    <Ionicons name="arrow-forward" size={20} color="#fff" />
+                  </View>
                 )}
               </TouchableOpacity>
             </View>
@@ -185,12 +207,12 @@ export default function AdminChangePassword({ navigation }) {
       </LinearGradient>
     </SafeAreaView>
   );
-}
+};
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f8f9ff',
+    backgroundColor: '#fff',
   },
   gradientBackground: {
     flex: 1,
@@ -200,13 +222,31 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     flexGrow: 1,
-    padding: 24,
+    paddingHorizontal: 24,
+    paddingTop: 16,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
     justifyContent: 'center',
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#2d3748',
+    fontFamily: 'Inter-SemiBold',
   },
   card: {
     backgroundColor: '#fff',
     borderRadius: 20,
-    padding: 32,
+    padding: 28,
     shadowColor: '#5e72e4',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.1,
@@ -214,53 +254,41 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   iconContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#f0f4ff',
-    justifyContent: 'center',
     alignItems: 'center',
-    alignSelf: 'center',
     marginBottom: 24,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#2d3748',
-    textAlign: 'center',
-    marginBottom: 8,
-    fontFamily: 'Inter-SemiBold',
-  },
   subtitle: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#718096',
     textAlign: 'center',
     marginBottom: 32,
-    lineHeight: 20,
+    lineHeight: 22,
     fontFamily: 'Inter-Regular',
   },
-  inputContainer: {
-    marginBottom: 16,
+  inputGroup: {
+    marginBottom: 20,
   },
-  inputLabel: {
-    fontSize: 14,
-    color: '#4a5568',
+  label: {
+    fontSize: 12,
+    color: '#718096',
     marginBottom: 8,
     fontWeight: '600',
-    fontFamily: 'Inter-Medium',
+    letterSpacing: 0.5,
+    fontFamily: 'Inter-SemiBold',
+    textTransform: 'uppercase',
   },
-  passwordInputWrapper: {
+  inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f8fafc',
     borderRadius: 12,
-    paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: '#edf2f7',
+    borderColor: '#e2e8f0',
   },
   input: {
     flex: 1,
     height: 56,
+    paddingHorizontal: 16,
     fontSize: 16,
     color: '#2d3748',
     fontFamily: 'Inter-Regular',
@@ -268,13 +296,10 @@ const styles = StyleSheet.create({
   eyeIcon: {
     padding: 16,
   },
-  primaryButton: {
+  button: {
     backgroundColor: '#5e72e4',
-    padding: 18,
+    paddingVertical: 16,
     borderRadius: 12,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
     marginTop: 24,
     shadowColor: '#5e72e4',
     shadowOffset: { width: 0, height: 4 },
@@ -282,13 +307,21 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
+  buttonDisabled: {
+    opacity: 0.7,
+  },
+  buttonContent: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   buttonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
     fontFamily: 'Inter-SemiBold',
+    marginRight: 8,
   },
-  buttonIcon: {
-    marginLeft: 8,
-  },
-}); 
+});
+
+export default FacultyPasswordChangeScreen;

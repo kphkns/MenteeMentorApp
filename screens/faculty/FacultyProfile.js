@@ -20,7 +20,7 @@ import {
   Feather,
 } from "@expo/vector-icons";
 
-const SERVER_URL = "http://192.168.84.136:5000";
+const SERVER_URL = "http://192.168.216.136:5000";
 
 export default function FacultyProfile({ navigation }) {
   const [profile, setProfile] = useState(null);
@@ -281,7 +281,7 @@ export default function FacultyProfile({ navigation }) {
         <MenuItem
           icon={<MaterialCommunityIcons name="key-change" size={24} color="#6C63FF" />}
           label="Change Password"
-          onPress={() => navigation.navigate("ChangePassword")}
+          onPress={() => navigation.navigate("FacultyPasswordChangeScreen")}
         />
       </View>
 

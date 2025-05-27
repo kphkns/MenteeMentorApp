@@ -10,24 +10,31 @@ import {
   TouchableOpacity,
   Pressable,
   RefreshControl,
-  Platform
+  Platform,
+  SectionList
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 
-const API_URL = 'http://192.168.84.136:5000';
+const API_URL = 'http://192.168.216.136:5000';
 
 export default function AppointmentHistoryScreen() {
   const [appointments, setAppointments] = useState([]);
+  const [filteredAppointments, setFilteredAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [activeFilter, setActiveFilter] = useState('all'); // 'all', 'completed', 'cancelled', 'failed'
 
   useEffect(() => {
     fetchAppointments();
   }, []);
+
+  useEffect(() => {
+    filterAppointments();
+  }, [appointments, activeFilter]);
 
   const fetchAppointments = async () => {
     if (!refreshing) setLoading(true);
@@ -42,6 +49,16 @@ export default function AppointmentHistoryScreen() {
     } finally {
       setLoading(false);
       setRefreshing(false);
+    }
+  };
+
+  const filterAppointments = () => {
+    if (activeFilter === 'all') {
+      setFilteredAppointments(appointments);
+    } else {
+      setFilteredAppointments(
+        appointments.filter(item => item.status === activeFilter)
+      );
     }
   };
 
@@ -159,10 +176,68 @@ export default function AppointmentHistoryScreen() {
 
   return (
     <View style={styles.container}>
-      {/* <View style={styles.header}>
-        <Text style={styles.headerTitle}>Appointment History</Text>
-        <Text style={styles.headerSubtitle}>Review your past appointments</Text>
-      </View> */}
+      {/* Filter Buttons */}
+      <View style={styles.filterContainer}>
+        <TouchableOpacity
+          style={[
+            styles.filterButton,
+            activeFilter === 'all' && styles.activeFilterButton
+          ]}
+          onPress={() => setActiveFilter('all')}
+        >
+          <Text style={[
+            styles.filterButtonText,
+            activeFilter === 'all' && styles.activeFilterButtonText
+          ]}>
+            All
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.filterButton,
+            activeFilter === 'completed' && styles.activeFilterButton
+          ]}
+          onPress={() => setActiveFilter('completed')}
+        >
+          <Text style={[
+            styles.filterButtonText,
+            activeFilter === 'completed' && styles.activeFilterButtonText
+          ]}>
+            Completed
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.filterButton,
+            activeFilter === 'cancelled' && styles.activeFilterButton
+          ]}
+          onPress={() => setActiveFilter('cancelled')}
+        >
+          <Text style={[
+            styles.filterButtonText,
+            activeFilter === 'cancelled' && styles.activeFilterButtonText
+          ]}>
+            Cancelled
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.filterButton,
+            activeFilter === 'failed' && styles.activeFilterButton
+          ]}
+          onPress={() => setActiveFilter('failed')}
+        >
+          <Text style={[
+            styles.filterButtonText,
+            activeFilter === 'failed' && styles.activeFilterButtonText
+          ]}>
+            Failed
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       {loading && !refreshing ? (
         <View style={styles.loadingContainer}>
@@ -170,14 +245,18 @@ export default function AppointmentHistoryScreen() {
         </View>
       ) : (
         <FlatList
-          data={appointments}
+          data={filteredAppointments}
           keyExtractor={(item) => item.appointment_id.toString()}
           renderItem={renderItem}
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <Ionicons name="time-outline" size={48} color="#CBD5E1" />
-              <Text style={styles.emptyText}>No history available</Text>
-              <Text style={styles.emptySubtext}>Your completed and cancelled appointments will appear here</Text>
+              <Text style={styles.emptyText}>No {activeFilter !== 'all' ? activeFilter : ''} appointments found</Text>
+              <Text style={styles.emptySubtext}>
+                {activeFilter === 'all' 
+                  ? 'Your completed and cancelled appointments will appear here'
+                  : `No ${activeFilter} appointments in your history`}
+              </Text>
             </View>
           }
           refreshControl={
@@ -286,6 +365,32 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f2f6ff',
+  },
+  filterContainer: {
+    flexDirection: 'row',
+    padding: 16,
+    paddingBottom: 8,
+    backgroundColor: '#f2f6ff',
+  },
+  filterButton: {
+    flex: 1,
+    paddingVertical: 8,
+    marginHorizontal: 4,
+    borderRadius: 8,
+    backgroundColor: '#E0E7FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  activeFilterButton: {
+    backgroundColor: '#4F46E5',
+  },
+  filterButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#4F46E5',
+  },
+  activeFilterButtonText: {
+    color: '#FFFFFF',
   },
   header: {
     padding: 24,

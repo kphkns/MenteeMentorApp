@@ -83,7 +83,7 @@ export default function LoginScreen({ navigation }) {
 
     setLoading(true);
     try {
-      const response = await fetch('http://192.168.84.136:5000/login', {
+      const response = await fetch('http://192.168.216.136:5000/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -250,15 +250,16 @@ export default function LoginScreen({ navigation }) {
             </Text>
           )}
 
-          <TouchableOpacity 
-            onPress={() => {
-              Haptics.selectionAsync();
-              Alert.alert('Coming Soon', 'Forgot Password flow coming soon!');
-            }}
-            style={styles.forgotContainer}
-          >
-            <Text style={[styles.forgot, { color: theme.link }]}>Forgot Password?</Text>
-          </TouchableOpacity>
+                <TouchableOpacity 
+          onPress={() => {
+            Haptics.selectionAsync();
+            navigation.navigate('PasswordResetScreen');
+          }}
+          style={styles.forgotContainer}
+        >
+          <Text style={[styles.forgot, { color: theme.link }]}>Forgot Password?</Text>
+        </TouchableOpacity>
+
         </Animated.View>
 
         {!isKeyboardVisible && (

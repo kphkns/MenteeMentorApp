@@ -11,6 +11,8 @@ import StudentDetailsScreen from '../faculty/StudentDetailsScreen';
 import FacultyAppointment from '../faculty/FacultyAppoinment';
 import FacultyAppointlist from '../faculty/FacultyAppointlist';
 import FacultyHistoryScreen from '../faculty/FacultyHistoryScreen';
+import FacultyComposeMessageScreen from '../faculty/Faculty_message/FacultyComposeMessageScreen';
+import FacultyPasswordChangeScreen from '../faculty/FacultyPasswordChangeScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -119,6 +121,16 @@ export default function FacultyStack() {
         name="FacultyHistoryScreen"
         component={FacultyHistoryScreen}
         options={{ title: 'Appointment History' }}
+      />
+       <Stack.Screen
+        name="FacultyComposeMessageScreen"
+        component={FacultyComposeMessageScreen}
+        options={{ title: 'FacultyComposeMessageScreen' }}
+      />
+       <Stack.Screen
+        name="FacultyPasswordChangeScreen"
+        component={FacultyPasswordChangeScreen}
+        options={{ title: 'FacultyPasswordChangeScreen' }}
       />
     </Stack.Navigator>
   );

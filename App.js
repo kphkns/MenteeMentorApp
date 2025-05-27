@@ -6,6 +6,7 @@ import LoginScreen from "./screens/LoginScreen";
 import StudentStack from "./screens/navigators/StudentStack";
 import FacultyStack from "./screens/navigators/FacultyStack";
 import AdminStack from "./screens/navigators/AdminStack";
+import PasswordResetScreen from "./screens/PasswordResetScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -19,20 +20,19 @@ export default function App() {
           options={{
             title: "",
             headerStyle: {
-              backgroundColor: "#f2f6ff", // Primary color for header background
-              elevation: 0, // Android shadow
-              shadowColor: "#f2f6ff", // iOS shadow color
+              backgroundColor: "#f2f6ff",
+              elevation: 0,
+              shadowColor: "#f2f6ff",
               shadowOpacity: 0.0,
               shadowOffset: { width: 0, height: 0 },
               shadowRadius: 0
             },
-            headerTintColor: "black", // White text/icons
+            headerTintColor: "black",
             headerTitleStyle: {
               fontWeight: 'bold',
               fontSize: 20,
-              
             },
-            // headerTitleAlign: 'center', // Centered title
+            // headerTitleAlign: 'center',
           }}
         />
         <Stack.Screen
@@ -49,6 +49,28 @@ export default function App() {
           name="Admin"
           component={AdminStack}
           options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="PasswordResetScreen"
+          component={PasswordResetScreen}
+          options={{
+            title: "",
+            headerShown: true, // If you want to hide the header, keep this line.
+            headerStyle: {
+              backgroundColor: "#f2f6ff",
+              elevation: 0,
+              shadowColor: "#f2f6ff",
+              shadowOpacity: 0.0,
+              shadowOffset: { width: 0, height: 0 },
+              shadowRadius: 0
+            },
+            headerTintColor: "black",
+            headerTitleStyle: {
+              fontWeight: 'bold',
+              fontSize: 20,
+            },
+            // headerTitleAlign: 'center',
+          }}
         />
       </Stack.Navigator>
     </NavigationContainer>

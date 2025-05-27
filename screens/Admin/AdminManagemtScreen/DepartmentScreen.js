@@ -9,7 +9,7 @@ import axios from 'axios';
 import { Ionicons, Feather, MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
-const SERVER_URL = 'http://192.168.84.136:5000';
+const SERVER_URL = 'http://192.168.216.136:5000';
 
 export default function DepartmentScreen() {
   const [departments, setDepartments] = useState([]);

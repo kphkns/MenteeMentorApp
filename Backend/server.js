@@ -2,6 +2,9 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const session = require('express-session');
+const path = require('path');
+require('dotenv').config();
+
 const app = express();
 const port = 5000;
 
@@ -14,7 +17,7 @@ app.use(bodyParser.json());
 
 // ✅ Serve uploaded files
 app.use('/uploads', express.static('uploads'));
-app.use('/templates', express.static('templates'));
+
 
 // Session setup
 app.use(session({
@@ -66,6 +69,14 @@ app.use('/api/faculty', facultyAppointmentsRoutes);
 
 const adminStudentStatusRoutes = require('./routes/AdminStudentStatus');
 app.use('/admin', adminStudentStatusRoutes);
+
+const authRoutes = require('./routes/auth');
+app.use('/auth', authRoutes);
+
+
+
+// const messageRoutes = require('./routes/messages');
+// app.use('/api/messages', messageRoutes);
 
 // Start server
 app.listen(port, () => {

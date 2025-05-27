@@ -19,7 +19,7 @@ import {
   Feather,
 } from "@expo/vector-icons";
 
-const SERVER_URL = "http://192.168.84.136:5000";
+const SERVER_URL = "http://192.168.216.136:5000";
 
 export default function AdminProfile({ navigation }) {
   const [profile, setProfile] = useState(null);

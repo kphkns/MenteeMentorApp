@@ -22,6 +22,13 @@ const academicItems = [
     icon: <MaterialCommunityIcons name="history" size={26} color="#10B981" />,
     color: '#ECFDF5',
   },
+   {
+    id: '3',
+    name: 'Appointment History',
+    description: 'Review your completed and past appointments',
+    icon: <MaterialCommunityIcons name="history" size={26} color="#10B981" />,
+    color: '#ECFDF5',
+  },
 ];
 
 export default function AcademicThings({ navigation }) {
@@ -32,6 +39,9 @@ export default function AcademicThings({ navigation }) {
         break;
       case '2':
         navigation.navigate('FacultyHistoryScreen');
+        break;
+        case '3':
+        navigation.navigate('FacultyComposeMessageScreen');
         break;
       default:
         console.log(`Unhandled item: ${item.name}`);
