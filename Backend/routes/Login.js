@@ -3,13 +3,18 @@ const jwt = require('jsonwebtoken');
 const db = require('../db');
 
 const router = express.Router();
-const JWT_SECRET = 'your_super_secret_key';
+const JWT_SECRET = process.env.JWT_SECRET || 'your_super_secret_key'; // ✅ Use environment variable
 
 router.post('/', (req, res) => {
   const { email, password, userType } = req.body;
 
+  // ✅ Better validation
   if (!email || !password || !userType) {
-    return res.status(400).json({ message: 'Missing credentials' });
+    return res.status(400).json({ 
+      success: false,
+      message: 'Missing credentials',
+      error: 'Email, password, and user type are required'
+    });
   }
 
   // Normalize user type
@@ -26,19 +31,31 @@ router.post('/', (req, res) => {
     table = 'admin';
     idField = 'Admin_id';
   } else {
-    return res.status(400).json({ message: 'Invalid user type' });
+    return res.status(400).json({ 
+      success: false,
+      message: 'Invalid user type',
+      error: 'User type must be Student, Faculty, or Admin'
+    });
   }
 
   const query = `SELECT * FROM ${table} WHERE Email = ? AND password = ?`;
 
   db.query(query, [email, password], (err, results) => {
     if (err) {
-      console.error('Login error:', err);
-      return res.status(500).json({ message: 'Server error' });
+      console.error('Database error during login:', err);
+      return res.status(500).json({ 
+        success: false,
+        message: 'Server error',
+        error: 'Database connection failed'
+      });
     }
 
     if (results.length === 0) {
-      return res.status(401).json({ message: 'Invalid email or password' });
+      return res.status(401).json({ 
+        success: false,
+        message: 'Invalid email or password',
+        error: 'Authentication failed'
+      });
     }
 
     const user = results[0];
@@ -58,14 +75,26 @@ router.post('/', (req, res) => {
       }
     });
 
-    // ✅ Create and return JWT
-    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '2h' });
+    try {
+      // ✅ Create JWT with error handling
+      const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '2h' });
+      
+      console.log('Login successful for:', payload.email); // ✅ Debug log
 
-    return res.status(200).json({
-      message: `${payload.userType} login successful`,
-      token,
-      user: payload,
-    });
+      return res.status(200).json({
+        success: true,
+        message: `${payload.userType} login successful`,
+        token: token, // ✅ Ensure token is included
+        user: payload,
+      });
+    } catch (jwtError) {
+      console.error('JWT creation error:', jwtError);
+      return res.status(500).json({
+        success: false,
+        message: 'Server error',
+        error: 'Token generation failed'
+      });
+    }
   });
 });
 
