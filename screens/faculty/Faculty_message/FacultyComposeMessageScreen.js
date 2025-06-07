@@ -23,7 +23,7 @@ export default function FacultyComposeMessageScreen() {
   const fetchMentees = async () => {
     try {
       const token = await AsyncStorage.getItem('authToken');
-      const res = await axios.get(`http://192.168.216.136:5000/api/faculty/students`, {
+      const res = await axios.get(`http://192.168.15.136:5000/api/faculty/students`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setStudents(res.data);
@@ -64,7 +64,7 @@ export default function FacultyComposeMessageScreen() {
         });
       }
 
-      await axios.post('http://192.168.216.136:5000/api/messages/send', formData, {
+      await axios.post('http://192.168.15.136:5000/api/messages/send', formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data',

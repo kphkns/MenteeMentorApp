@@ -17,7 +17,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { LinearGradient } from 'expo-linear-gradient';
 
-const SERVER_URL = 'http://192.168.216.136:5000';
+const SERVER_URL = 'http://192.168.15.136:5000';
 
 export default function AdminChangePassword({ navigation }) {
   const [oldPassword, setOldPassword] = useState('');

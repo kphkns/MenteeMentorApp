@@ -114,7 +114,6 @@ export default function AdminManagement({ navigation }) {
   );
 }
 
-
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,

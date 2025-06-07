@@ -31,46 +31,46 @@ app.use(session({
 }));
 
 // Routes
-const loginRoute = require('./routes/Login');
+const loginRoute = require('../routes/Login');
 app.use('/login', loginRoute);
 
-const dashboardRoutes = require('./routes/Dashboard');
+const dashboardRoutes = require('../routes/Dashboard');
 app.use('/', dashboardRoutes);
 
-const logoutRoute = require('./routes/Logout');
+const logoutRoute = require('../routes/Logout');
 app.use('/', logoutRoute);
 
-const studentRoutes = require('./routes/StudentProfile');
+const studentRoutes = require('../routes/StudentProfile');
 app.use('/', studentRoutes);
 
-const adminRoutes = require('./routes/AdminProfile');
+const adminRoutes = require('../routes/AdminProfile');
 app.use('/', adminRoutes);
 
-const adminDepartmentRoutes = require('./routes/AdminManage/DepatmentManage');
+const adminDepartmentRoutes = require('../routes/AdminManage/DepatmentManage');
 app.use('/admin', adminDepartmentRoutes);
 
-const facultyProfileRoutes = require('./routes/FacultyProfile');
+const facultyProfileRoutes = require('../routes/FacultyProfile');
 app.use('/', facultyProfileRoutes);
 
-const FacultyMentorcards = require('./routes/FacultyMentorcards');
+const FacultyMentorcards = require('../routes/FacultyMentorcards');
 app.use('/', FacultyMentorcards);
 
-const mentorCardRoutes = require('./routes/MentorCard');
+const mentorCardRoutes = require('../routes/MentorCard');
 app.use('/mentor-card', mentorCardRoutes);
 
-const studentMentorCardRoute = require('./routes/StudentMentorCard');
+const studentMentorCardRoute = require('../routes/StudentMentorCard');
 app.use('/api', studentMentorCardRoute);
 
-const appointmentRoutes = require('./routes/Appointments');
+const appointmentRoutes = require('../routes/Appointments');
 app.use('/api/appointments', appointmentRoutes);
 
-const facultyAppointmentsRoutes = require('./routes/FacultyAppointments');
+const facultyAppointmentsRoutes = require('../routes/FacultyAppointments');
 app.use('/api/faculty', facultyAppointmentsRoutes);
 
-const adminStudentStatusRoutes = require('./routes/AdminStudentStatus');
+const adminStudentStatusRoutes = require('../routes/AdminStudentStatus');
 app.use('/admin', adminStudentStatusRoutes);
 
-const authRoutes = require('./routes/auth');
+const authRoutes = require('../routes/auth');
 app.use('/auth', authRoutes);
 
 

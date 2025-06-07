@@ -42,7 +42,7 @@ export default function StudentDetailsScreen({ route }) {
 
   const fetchMentorCard = async () => {
     try {
-      const response = await fetch(`http://192.168.216.136:5000/mentor-card/${student.Student_id}`);
+      const response = await fetch(`http://192.168.15.136:5000/mentor-card/${student.Student_id}`);
       const data = await response.json();
 
       if (response.ok) {
@@ -70,7 +70,7 @@ export default function StudentDetailsScreen({ route }) {
     setSessionsLoading(true);
     try {
       const response = await fetch(
-        `http://192.168.216.136:5000/mentor-card/monitoring-session/${student.Student_id}`,
+        `http://192.168.15.136:5000/mentor-card/monitoring-session/${student.Student_id}`,
         {
           headers: {
             'Content-Type': 'application/json',
@@ -105,7 +105,7 @@ export default function StudentDetailsScreen({ route }) {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const response = await fetch(`http://192.168.216.136:5000/mentor-card/${student.Student_id}`, {
+      const response = await fetch(`http://192.168.15.136:5000/mentor-card/${student.Student_id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
