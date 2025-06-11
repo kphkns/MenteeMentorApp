@@ -5,17 +5,17 @@ const db = require('../db');
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'your_super_secret_key'; // ✅ Use environment variable
 
-router.post('/', (req, res) => {
+router.post('/login', (req, res) => {  // Changed to specific endpoint
   const { email, password, userType } = req.body;
 
-  // ✅ Better validation
   if (!email || !password || !userType) {
     return res.status(400).json({ 
       success: false,
-      message: 'Missing credentials',
-      error: 'Email, password, and user type are required'
+      message: 'Email, password, and user type are required',
+      token: null  // Explicitly send null token
     });
   }
+
 
   // Normalize user type
   const userTypeNormalized = userType.toLowerCase();
@@ -76,23 +76,20 @@ router.post('/', (req, res) => {
     });
 
     try {
-      // ✅ Create JWT with error handling
       const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '2h' });
       
-      console.log('Login successful for:', payload.email); // ✅ Debug log
-
       return res.status(200).json({
         success: true,
         message: `${payload.userType} login successful`,
-        token: token, // ✅ Ensure token is included
+        token: token,
         user: payload,
       });
     } catch (jwtError) {
       console.error('JWT creation error:', jwtError);
       return res.status(500).json({
         success: false,
-        message: 'Server error',
-        error: 'Token generation failed'
+        message: 'Token generation failed',
+        token: null  // Explicitly send null token
       });
     }
   });
