@@ -37,7 +37,7 @@ export default function FacultyStudentsScreen() {
   const fetchStudents = async () => {
     try {
       const token = await AsyncStorage.getItem('authToken');
-      const response = await fetch('http://192.168.15.136:5000/students/by-faculty', {
+      const response = await fetch('http://192.168.158.136:5000/students/by-faculty', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -109,7 +109,7 @@ export default function FacultyStudentsScreen() {
         <Image
           source={
             item.photo
-              ? { uri: `http://192.168.15.136:5000/uploads/${item.photo}` }
+              ? { uri: `http://192.168.158.136:5000/uploads/${item.photo}` }
               : require('../../assets/default-profile.png')
           }
           style={styles.avatar}

@@ -16,7 +16,7 @@ import { Ionicons, MaterialIcons, Feather } from "@expo/vector-icons";
 import axios from "axios";
 import RNPickerSelect from "react-native-picker-select";
 
-const SERVER_URL = "http://192.168.15.136:5000";
+const SERVER_URL = "http://192.168.158.136:5000";
 
 const colors = {
   primary: "#6C63FF",

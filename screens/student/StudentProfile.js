@@ -20,7 +20,7 @@ import {
   Feather,
 } from "@expo/vector-icons";
 
-const SERVER_URL = "http://192.168.15.136:5000";
+const SERVER_URL = "http://192.168.158.136:5000";
 
 export default function StudentProfile({ navigation }) {
   const [profile, setProfile] = useState(null);

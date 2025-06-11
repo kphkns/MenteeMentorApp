@@ -17,7 +17,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 
-const API_URL = 'http://192.168.15.136:5000';
+const API_URL = 'http://192.168.158.136:5000';
 
 export default function AppointmentHistoryScreen() {
   const [appointments, setAppointments] = useState([]);
