@@ -15,7 +15,7 @@ import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
-const API_BASE_URL = 'http://192.168.216.136:5000';
+const API_BASE_URL = 'http://192.168.158.136:5000';
 
 const PasswordResetScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');

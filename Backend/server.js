@@ -6,22 +6,18 @@ const path = require('path');
 require('dotenv').config();
 
 const app = express();
-const port = 5000;
+const port = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors({
-  origin: 'http://localhost:19006', // Replace with your Expo or frontend dev URL
+  origin: process.env.FRONTEND_URL || 'http://localhost:19006',
   credentials: true
 }));
 app.use(bodyParser.json());
-
-// ✅ Serve uploaded files
 app.use('/uploads', express.static('uploads'));
 
-
-// Session setup
 app.use(session({
-  secret: 'your-secret-key',
+  secret: process.env.SESSION_SECRET || 'your-secret-key',
   resave: false,
   saveUninitialized: false,
   cookie: {
@@ -31,54 +27,30 @@ app.use(session({
 }));
 
 // Routes
-const loginRoute = require('./routes/Login');
-app.use('/login', loginRoute);
+app.use('/login', require('./routes/Login'));
+app.use('/', require('./routes/Dashboard'));
+app.use('/', require('./routes/Logout'));
+app.use('/', require('./routes/StudentProfile'));
+app.use('/', require('./routes/FacultyProfile'));
+app.use('/', require('./routes/FacultyMentorcards'));
+app.use('/mentor-card', require('./routes/MentorCard'));
+app.use('/api', require('./routes/StudentMentorCard'));
+app.use('/api/appointments', require('./routes/Appointments'));
+app.use('/api/faculty', require('./routes/FacultyAppointments'));
+app.use('/admin', require('./routes/AdminProfile'));
+app.use('/admin', require('./routes/AdminManage/DepatmentManage'));
+app.use('/admin', require('./routes/AdminStudentStatus'));
+app.use('/auth', require('./routes/auth'));
 
-const dashboardRoutes = require('./routes/Dashboard');
-app.use('/', dashboardRoutes);
+// Optional DB test route
+const db = require('./db');
+app.get('/test-db', (req, res) => {
+  db.query('SELECT NOW() AS current_time', (err, result) => {
+    if (err) return res.status(500).send('❌ DB Error');
+    res.send(`✅ DB Time: ${result[0].current_time}`);
+  });
+});
 
-const logoutRoute = require('./routes/Logout');
-app.use('/', logoutRoute);
-
-const studentRoutes = require('./routes/StudentProfile');
-app.use('/', studentRoutes);
-
-const adminRoutes = require('./routes/AdminProfile');
-app.use('/', adminRoutes);
-
-const adminDepartmentRoutes = require('./routes/AdminManage/DepatmentManage');
-app.use('/admin', adminDepartmentRoutes);
-
-const facultyProfileRoutes = require('./routes/FacultyProfile');
-app.use('/', facultyProfileRoutes);
-
-const FacultyMentorcards = require('./routes/FacultyMentorcards');
-app.use('/', FacultyMentorcards);
-
-const mentorCardRoutes = require('./routes/MentorCard');
-app.use('/mentor-card', mentorCardRoutes);
-
-const studentMentorCardRoute = require('./routes/StudentMentorCard');
-app.use('/api', studentMentorCardRoute);
-
-const appointmentRoutes = require('./routes/Appointments');
-app.use('/api/appointments', appointmentRoutes);
-
-const facultyAppointmentsRoutes = require('./routes/FacultyAppointments');
-app.use('/api/faculty', facultyAppointmentsRoutes);
-
-const adminStudentStatusRoutes = require('./routes/AdminStudentStatus');
-app.use('/admin', adminStudentStatusRoutes);
-
-const authRoutes = require('./routes/auth');
-app.use('/auth', authRoutes);
-
-
-
-// const messageRoutes = require('./routes/messages');
-// app.use('/api/messages', messageRoutes);
-
-// Start server
 app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
+  console.log(`🚀 Server running at http://localhost:${port}`);
 });

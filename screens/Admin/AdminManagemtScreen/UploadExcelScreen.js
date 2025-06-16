@@ -15,7 +15,7 @@ import XLSX from 'xlsx';
 import { Picker } from '@react-native-picker/picker';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 
-const SERVER_URL = 'http://192.168.216.136:5000';
+const SERVER_URL = 'http://192.168.158.136:5000';
 const TEMPLATE_URL = `${SERVER_URL}/templates/student_upload_format.xlsx`;
 
 export default function ExcelUploadScreen() {

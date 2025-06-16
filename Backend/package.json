@@ -1,21 +1,29 @@
 {
-  "name": "backend",
+  "name": "mentee-mentor-backend",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Mentee-Mentor Management System Backend using Node.js, Express, and MySQL",
+  "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "node",
+    "express",
+    "mysql",
+    "mentee",
+    "mentor",
+    "management",
+    "backend",
+    "railway"
+  ],
+  "author": "kukil phuakn",
+  "license": "MIT",
   "type": "commonjs",
   "dependencies": {
     "bcrypt": "^5.1.1",
     "bcryptjs": "^3.0.2",
     "body-parser": "^2.2.0",
     "cors": "^2.8.5",
-    "crypto": "^1.0.1",
     "dotenv": "^16.5.0",
     "expo-notifications": "~0.31.2",
     "express": "^5.1.0",

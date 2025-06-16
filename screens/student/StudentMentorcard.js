@@ -16,7 +16,7 @@ import * as Sharing from "expo-sharing";
 import { Ionicons, MaterialIcons, Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 
-const SERVER_URL = "http://192.168.216.136:5000";
+const SERVER_URL = "http://192.168.158.136:5000";
 
 export default function StudentMentorCardScreen() {
   const [mentorCard, setMentorCard] = useState(null);

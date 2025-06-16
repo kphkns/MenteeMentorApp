@@ -19,7 +19,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 import { Ionicons, MaterialIcons, Feather } from "@expo/vector-icons";
 
-const API_URL = "http://192.168.216.136:5000";
+const API_URL = "http://192.168.158.136:5000";
 const IST_OFFSET = 330; // IST offset in minutes
 
 const isSameDay = (d1, d2) =>
